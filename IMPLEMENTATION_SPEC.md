@@ -2,8 +2,8 @@
 
 > 项目名：**Tally**（中文名：明账）｜ repo：`tally` ｜ CLI 命令：`tally`
 > 命名由来：tally stick（符木）——金融史上最早的防篡改双账本，对应本系统"模型账本 vs 真实持仓"的双账本设计；"明账" = 每条建议明明白白记账、可追溯、可证伪。
-> 版本 v2.2-final ｜ 2026-07-08 ｜ 面向 Claude Code 的工程实现文档
-> 演进链：PRD v1.0（量化+架构双审）→ 策略共识（三研究员辩论）→ 金融复审（组合风控总监+数据执行专家）→ 架构重定义 → PM 评审 → v2.1（美股 S1/S2/S4 回归一期，产品负责人决策）→ **v2.2（美股改动三视角复审后修订：引入 SEC XBRL 作美股财务主源、定义 MarketProfile、拆分 M3 任务、修复 12 项工程一致性问题）**
+> 版本 v2.2.1 ｜ 2026-07-08 ｜ 面向 Claude Code 的工程实现文档
+> 演进链：PRD v1.0（量化+架构双审）→ 策略共识（三研究员辩论）→ 金融复审（组合风控总监+数据执行专家）→ 架构重定义 → PM 评审 → v2.1（美股 S1/S2/S4 回归一期，产品负责人决策）→ v2.2（美股改动三视角复审后修订：引入 SEC XBRL 作美股财务主源、定义 MarketProfile、拆分 M3 任务、修复 12 项工程一致性问题）→ **v2.2.1（产品负责人决策：通知渠道 Slack→Telegram；美股 US.enabled 默认 false，A股稳跑 4 周后再开）**
 > 本文档为唯一实现依据（single source of truth），信息自足，不依赖任何外部文档。
 
 ---
@@ -17,7 +17,7 @@
   3. **所有持久化经 Repository**：业务模块禁止裸 SQL。
 - 所有可调参数放 `config/*.yaml`，代码中不得出现魔法数字。
 - 技术栈：Python 3.11+；pandas、numpy、pydantic、typer（CLI）、streamlit、plotly、tushare、akshare、yfinance、pandas_market_calendars（NYSE 日历）、lxml（Wikipedia 成分表解析）、requests（SEC EDGAR）、pytest。
-- 密钥：`TUSHARE_TOKEN`、`SLACK_WEBHOOK` 走 `.env`（入 `.gitignore`），config 中以 `env:VAR` 引用。SEC EDGAR 无需 key，但必须设置合规 `User-Agent`（含联系邮箱）。
+- 密钥：`TUSHARE_TOKEN`、`TELEGRAM_BOT_TOKEN`、`TELEGRAM_CHAT_ID` 走 `.env`（入 `.gitignore`），config 中以 `env:VAR` 引用。SEC EDGAR 无需 key，但必须设置合规 `User-Agent`（含联系邮箱）。
 - 数据库演进：一期允许"删库重同步"（数据均可从源重建），DDL 变更无需迁移脚本，但须同步更新本文档 §3.2。
 
 ## 1. 系统目标与一期范围
@@ -62,7 +62,7 @@
 │   └─ derived.py            派生指标：roe_ttm、rev_yoy_q（按 market 区分累计/单季口径）
 │                            （估值分位为二期 S3/S5 用，一期不实现）
 ├─ common/                   config(pydantic) / calendar(按 market 分派) / market_profile
-│                            logging / notify(slack)
+│                            logging / notify(telegram)
 └─ tests/                    fixtures/（录制回放）+ golden/（黄金用例）+ synth/（合成K线生成器）
 ```
 
@@ -215,7 +215,7 @@ CREATE TABLE backtest_runs (
 
 ### 3.3 同步管道要求
 
-全局令牌桶（Tushare 按积分配额、AkShare 并发 1–2、yfinance 并发 2、SEC EDGAR ≤8 req/s 且设 User-Agent）；多线程拉取单线程批量写；增量按缺失区间（美股日K例外：检测到新 split/dividend 事件的票全量重拉，见 §3.1 #12）；失败入 `sync_failures` 下次优先补拉，连续 3 天失败 Slack 告警；K线覆盖率缺最近 3 日的股票当日跳过信号并在报告标注；每任务记录行数/时长基线，偏离 3 倍告警。
+全局令牌桶（Tushare 按积分配额、AkShare 并发 1–2、yfinance 并发 2、SEC EDGAR ≤8 req/s 且设 User-Agent）；多线程拉取单线程批量写；增量按缺失区间（美股日K例外：检测到新 split/dividend 事件的票全量重拉，见 §3.1 #12）；失败入 `sync_failures` 下次优先补拉，连续 3 天失败 Telegram 告警；K线覆盖率缺最近 3 日的股票当日跳过信号并在报告标注；每任务记录行数/时长基线，偏离 3 倍告警。
 
 ## 4. 组合层规格（资金宪法）
 
@@ -267,7 +267,7 @@ dd_ix = index_close / max(index_close, 近250日) − 1
 
 - 模型账本：假设每条建议按 T+1 开盘全额执行。**T+1 = 信号所属市场日历的次一交易时段**（美股信号即北京时间当晚开盘）。用途：信号追踪、策略评估、与回测对齐。
 - 实际账本：以 `executions` 为准，默认 skipped。用途：持仓卖出信号对象判定、止损价锚定（真实成交价）、双闸门、集中度约束。
-- 偏离度指标：建议执行率、平均执行滑点；连续 10 个交易日执行率 < 50% → Slack 提示"建议与实际操作严重脱节"。
+- 偏离度指标：建议执行率、平均执行滑点；连续 10 个交易日执行率 < 50% → Telegram 提示"建议与实际操作严重脱节"。
 
 ## 5. 策略层规格
 
@@ -391,7 +391,7 @@ T+1/T+5/T+20 复权收益 vs 基准（A股对 H00300、美股对 ^SP500TR，T+N 
 ### 8.2 执行偏离（实际账本口径）
 执行率、执行滑点，周报输出；"过期作废（expired）"与"主动放弃"分开统计。
 
-### 8.3 日报内容（Slack 摘要 + 看板详情，**分市场成段**）
+### 8.3 日报内容（Telegram 摘要 + 看板详情，**分市场成段**）
 今日信号（按市场→策略分组：股票/原因列表/止损价/建议仓位/建议限价）、待回填提醒、regime 状态与总仓上限（分市场）、组合 dd（双账本、分市场）、数据健康摘要。
 
 ### 8.4 告警（三类）
@@ -401,8 +401,8 @@ T+1/T+5/T+20 复权收益 vs 基准（A股对 H00300、美股对 ^SP500TR，T+N 
 
 | 时点（北京时间） | 动作 | 主体 |
 |---|---|---|
-| A股交易日 16:30 | launchd 触发 `tally run --market CN`：同步→筛池(周一)→信号→追踪→报告→Slack | 系统 |
-| 当晚任意时间 | 阅读 A股 Slack 摘要（≤3 分钟）；回填昨日成交（看板或 CLI） | 用户 |
+| A股交易日 16:30 | launchd 触发 `tally run --market CN`：同步→筛池(周一)→信号→追踪→报告→Telegram | 系统 |
+| 当晚任意时间 | 阅读 A股 Telegram 摘要（≤3 分钟）；回填昨日成交（看板或 CLI） | 用户 |
 | 次日 9:15–9:25 | 按建议在 A股券商 App 挂集合竞价单（日报附建议限价） | 用户 |
 | 美股交易日次日 07:00 | launchd 触发 `tally run --market US`（美股收盘后）：同链路，日报与 A股合并展示、分市场成段 | 系统 |
 | 当天白天 | 阅读美股摘要；当晚 21:30/22:30 美股开盘时执行并回填 | 用户 |
@@ -425,12 +425,13 @@ markets:
     benchmark: H00300              # 降级链: H00300 -> 510300_adj -> 000300+2.2%
     cash_yield: 0.018
   US:
-    enabled: true                  # M3 接入前置 false
+    enabled: false                 # 灰度:A股链路满足成功标准2(无人工干预连续跑≥4周)后再置 true
     initial_capital: 50000         # USD
     benchmark: ^SP500TR            # 降级链: ^SP500TR -> ^GSPC+1.8%
     cash_yield: 0.040
 tushare_token: env:TUSHARE_TOKEN
-slack_webhook: env:SLACK_WEBHOOK
+telegram_bot_token: env:TELEGRAM_BOT_TOKEN
+telegram_chat_id: env:TELEGRAM_CHAT_ID
 sec_user_agent: "Tally/1.0 (qingzhu.liu@cobo.com)"   # SEC EDGAR 合规要求
 rate_limits: {tushare_per_min: 400, akshare_concurrency: 2, akshare_interval_s: 0.5,
               yfinance_concurrency: 2, sec_edgar_rps: 8}
@@ -548,7 +549,7 @@ costs:
 - **T1.3** 手工名单（config 里 20 只票）→ 日K+估值最小同步（增量、as_of_date 支持）。AC：跨除权日增量更新后复权收益序列连续（单测：模拟除权事件）。
 - **T1.4** indicators.py（SMA/ATR/RSI/动量，动态复权）。AC：与手算已知值对照单测。
 - **T1.5** S1 策略 + 基类 + 状态机。AC：六形态合成K线方向单测（breakout 触发买入、crash/downtrend 不触发、吊灯止损正确退出）。
-- **T1.6** 每日 CLI：`tally run --market CN --until today` 输出 markdown 信号报告（原因/止损/固定仓位建议）+ Slack 推送。AC：幂等（同日重复跑产物一致）；报告含"未经回测验证，仅观察"标注。
+- **T1.6** 每日 CLI：`tally run --market CN --until today` 输出 markdown 信号报告（原因/止损/固定仓位建议）+ Telegram 推送。AC：幂等（同日重复跑产物一致）；报告含"未经回测验证，仅观察"标注。
 - **里程碑出口**：用户开始每日收到 S1 观察信号，反馈呈现格式与运维体感。
 
 ### M2 · 数据层完备 + 回测基建 + S1 过门（A股）
@@ -581,7 +582,7 @@ costs:
 - **T4.2** allocator/constraints 完整版（漂移带/行业权重上限/同票合并/停用重归一）。AC：§4.2 五条裁决规则场景单测全覆盖。
 - **T4.3** catch-up runner 完整版 + launchd 双计划 + 信号过期。交付：① `tally run --market {CN,US} [--until DATE]`，每市场独立 catch-up 游标；② 两份 launchd plist（tally-cn 16:30 / tally-us 07:00，均含错过后开机补触发）；③ 过期规则：信号于其所属市场交易日 D 生成，预期执行日 = 该市场日历 D 的次一交易日，runner 推进过执行日仍未回填 → note='expired'。AC：模拟"隔 3 天开机"CN/US 各自补跑正确；**含中美节假日错位周场景（如国庆周 CN 休市 US 开市）**两游标互不污染；过期标记单测。
 - **T4.4** 看板三页 + CLI 回填。AC：单条信号回填 ≤3 次交互；CN/US 切换数据正确隔离；美股信号回填链路与 A股一致。
-- **T4.5** Slack 三类告警 + 日报终版（分市场成段）。AC：三类告警各有触发单测。
+- **T4.5** Telegram 三类告警 + 日报终版（分市场成段）。AC：三类告警各有触发单测。
 
 ### M5 · 试运行（时长 = max(8 周, **A股累计 100 条信号**)，美股信号单独计数不并入门槛）
 双账本并行；周报执行偏离；按 §7 停用规则监控（按策略腿）。
