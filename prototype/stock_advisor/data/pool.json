@@ -1,0 +1,69 @@
+{
+  "stocks": {
+    "CN:600001": {
+      "code": "600001",
+      "name": "演示银行",
+      "market": "CN",
+      "entered": "2026-07-08",
+      "entry_reason": "市值4321亿, PE 25.0, PB 2.8, 日成交35.5亿",
+      "miss_weeks": 0
+    },
+    "CN:600002": {
+      "code": "600002",
+      "name": "演示白酒",
+      "market": "CN",
+      "entered": "2026-07-08",
+      "entry_reason": "市值3853亿, PE 10.1, PB 4.9, 日成交39.7亿",
+      "miss_weeks": 0
+    },
+    "CN:600004": {
+      "code": "600004",
+      "name": "演示电力",
+      "market": "CN",
+      "entered": "2026-07-08",
+      "entry_reason": "市值2328亿, PE 22.2, PB 4.3, 日成交12.9亿",
+      "miss_weeks": 0
+    },
+    "CN:600003": {
+      "code": "600003",
+      "name": "演示地产",
+      "market": "CN",
+      "entered": "2026-07-08",
+      "entry_reason": "市值1980亿, PE 10.8, PB 2.8, 日成交46.5亿",
+      "miss_weeks": 0
+    },
+    "US:DMXOM": {
+      "code": "DMXOM",
+      "name": "Demo Oil",
+      "market": "US",
+      "entered": "2026-07-08",
+      "entry_reason": "市值$2730B, PE 17.4, ROE 44%",
+      "miss_weeks": 0
+    },
+    "US:DMTSLA": {
+      "code": "DMTSLA",
+      "name": "Demo Tesla",
+      "market": "US",
+      "entered": "2026-07-08",
+      "entry_reason": "市值$1366B, PE 18.0, ROE 36%",
+      "miss_weeks": 0
+    },
+    "US:DMKO": {
+      "code": "DMKO",
+      "name": "Demo Cola",
+      "market": "US",
+      "entered": "2026-07-08",
+      "entry_reason": "市值$1117B, PE 21.0, ROE 34%",
+      "miss_weeks": 0
+    },
+    "US:DMAAPL": {
+      "code": "DMAAPL",
+      "name": "Demo Apple",
+      "market": "US",
+      "entered": "2026-07-08",
+      "entry_reason": "市值$526B, PE 29.4, ROE 29%",
+      "miss_weeks": 0
+    }
+  },
+  "last_screen": "2026-07-08"
+}

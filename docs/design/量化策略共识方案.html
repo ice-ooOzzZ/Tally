@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>量化策略共识方案 · 三研究员辩论纪要与最终五策略</title>
+<style>
+  :root {
+    --bg: #f7f8fa; --card: #ffffff; --ink: #1a2333; --muted: #6b7688;
+    --accent: #2563eb; --accent-soft: #eff4ff; --border: #e4e8ef;
+    --green: #16803c; --green-soft: #ecfdf3; --red: #b42318; --red-soft: #fef3f2;
+    --amber: #b54708; --amber-soft: #fffaeb; --purple: #6941c6; --purple-soft: #f4f0ff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+         background: var(--bg); color: var(--ink); line-height: 1.75; font-size: 15px; }
+  .layout { display: flex; max-width: 1280px; margin: 0 auto; }
+  nav { width: 235px; flex-shrink: 0; position: sticky; top: 0; height: 100vh;
+        overflow-y: auto; padding: 32px 8px 32px 20px; }
+  nav a { display: block; color: var(--muted); text-decoration: none; font-size: 13px;
+          padding: 5px 10px; border-radius: 6px; }
+  nav a:hover { color: var(--accent); background: var(--accent-soft); }
+  nav .nav-h { font-size: 11px; text-transform: uppercase; letter-spacing: .08em;
+               color: #9aa4b5; margin: 18px 0 4px 10px; }
+  main { flex: 1; min-width: 0; padding: 40px 40px 80px; }
+  header.hero { background: linear-gradient(135deg, #312e81, #6941c6); color: #fff;
+                border-radius: 16px; padding: 36px 40px; margin-bottom: 32px; }
+  header.hero h1 { font-size: 25px; margin-bottom: 8px; }
+  header.hero p { opacity: .88; font-size: 14px; }
+  .meta { display: flex; gap: 14px; margin-top: 16px; font-size: 13px; flex-wrap: wrap; }
+  .meta span { background: rgba(255,255,255,.15); padding: 4px 12px; border-radius: 20px; }
+  section { background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+            padding: 30px 34px; margin-bottom: 26px; scroll-margin-top: 20px; }
+  h2 { font-size: 20px; margin-bottom: 6px; }
+  h2 .no { color: var(--purple); margin-right: 8px; }
+  h3 { font-size: 16px; margin: 24px 0 10px; padding-left: 10px; border-left: 3px solid var(--purple); }
+  h4 { font-size: 14px; margin: 14px 0 6px; }
+  p, li { color: #3a4356; }
+  .sub { color: var(--muted); font-size: 13px; margin-bottom: 14px; }
+  ul, ol { padding-left: 22px; margin: 8px 0; }
+  li { margin: 4px 0; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13.5px; }
+  th { background: #f1f4f9; text-align: left; padding: 9px 12px; font-weight: 600;
+       border-bottom: 2px solid var(--border); }
+  td { padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  code { background: #eef1f6; padding: 1px 6px; border-radius: 5px;
+         font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 12.5px; color: #b3410e; }
+  pre { background: #0f172a; color: #dbe4f3; padding: 16px 20px; border-radius: 10px;
+        overflow-x: auto; font-size: 12.5px; line-height: 1.65; margin: 10px 0; }
+  pre code { background: none; color: inherit; padding: 0; }
+  pre .cm { color: #7c93b5; }
+  .callout { border-radius: 10px; padding: 14px 18px; margin: 14px 0; font-size: 14px; }
+  .callout.warn { background: var(--amber-soft); border: 1px solid #fedf89; }
+  .callout.good { background: var(--green-soft); border: 1px solid #abefc6; }
+  .callout.risk { background: var(--red-soft); border: 1px solid #fecdca; }
+  .callout.info { background: var(--purple-soft); border: 1px solid #d9ccf7; }
+  .callout b:first-child { display: block; margin-bottom: 4px; }
+  .badge { display: inline-block; font-size: 11.5px; padding: 2px 9px; border-radius: 12px;
+           font-weight: 600; margin-right: 6px; white-space: nowrap; }
+  .b-green { background: var(--green-soft); color: var(--green); }
+  .b-red { background: var(--red-soft); color: var(--red); }
+  .b-amber { background: var(--amber-soft); color: var(--amber); }
+  .b-blue { background: var(--accent-soft); color: var(--accent); }
+  .b-purple { background: var(--purple-soft); color: var(--purple); }
+  /* 研究员卡片 */
+  .personas { display: flex; gap: 12px; margin: 14px 0; flex-wrap: wrap; }
+  .persona { flex: 1; min-width: 220px; border-radius: 12px; padding: 16px 18px; border: 1.5px solid; }
+  .persona b { display: block; font-size: 15px; margin-bottom: 4px; }
+  .persona span { font-size: 12.5px; opacity: .85; }
+  .p-a { background: var(--red-soft); border-color: #fecdca; color: #7a271a; }
+  .p-b { background: var(--green-soft); border-color: #abefc6; color: #14532d; }
+  .p-c { background: var(--accent-soft); border-color: #b8ccf5; color: #1e40af; }
+  /* 流程 */
+  .steps { display: flex; gap: 8px; margin: 16px 0; flex-wrap: wrap; }
+  .step { flex: 1; min-width: 150px; background: #fafbfd; border: 1px solid var(--border);
+          border-radius: 10px; padding: 12px 14px; font-size: 13px; text-align: center; }
+  .step b { display: block; color: var(--purple); margin-bottom: 3px; font-size: 13.5px; }
+  /* 策略卡 */
+  .stgy { border: 1.5px solid var(--border); border-radius: 12px; margin: 18px 0; overflow: hidden; }
+  .stgy-head { padding: 14px 20px; display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .stgy-head h3 { margin: 0; padding: 0; border: none; font-size: 16.5px; }
+  .stgy-body { padding: 4px 20px 18px; }
+  .sh-1 { background: linear-gradient(90deg, #fef3f2, #fff); }
+  .sh-2 { background: linear-gradient(90deg, #fffaeb, #fff); }
+  .sh-3 { background: linear-gradient(90deg, #ecfdf3, #fff); }
+  .sh-4 { background: linear-gradient(90deg, #eff4ff, #fff); }
+  .sh-5 { background: linear-gradient(90deg, #f4f0ff, #fff); }
+  .sh-0 { background: linear-gradient(90deg, #f1f4f9, #fff); }
+  .kv { display: flex; gap: 10px; flex-wrap: wrap; margin: 8px 0; }
+  .kv div { background: #f7f8fb; border: 1px solid var(--border); border-radius: 8px;
+            padding: 6px 12px; font-size: 12.5px; color: var(--muted); }
+  .kv div b { color: var(--ink); font-weight: 600; }
+  footer { text-align: center; color: var(--muted); font-size: 12.5px; padding: 10px 0 40px; }
+  @media (max-width: 900px) { nav { display: none; } main { padding: 20px 16px 60px; } }
+</style>
+</head>
+<body>
+<div class="layout">
+<nav>
+  <div class="nav-h">讨论过程</div>
+  <a href="#s1">1 · 讨论机制设计</a>
+  <a href="#s2">2 · 第一轮：独立提案</a>
+  <a href="#s3">3 · 第二轮：交叉质询</a>
+  <a href="#s4">4 · 投票与分歧裁决</a>
+  <div class="nav-h">最终结论</div>
+  <a href="#s5">5 · 共识原则</a>
+  <a href="#g0">策略〇 · 状态闸门（基础设施）</a>
+  <a href="#g1">策略一 · 趋势突破</a>
+  <a href="#g2">策略二 · 事件PEAD</a>
+  <a href="#g3">策略三 · 质量折价回归</a>
+  <a href="#g4">策略四 · 恐慌错杀回补</a>
+  <a href="#g5">策略五 · 盈利动量持有</a>
+  <a href="#s6">6 · 组合配置与系统落地</a>
+</nav>
+<main>
+
+<header class="hero">
+  <h1>量化策略共识方案</h1>
+  <p>三位不同流派研究员 Agent · 独立提案 → 交叉质询 → 投票合并 → 主席裁决 · 最终 5 条买卖策略 + 1 个组合级闸门</p>
+  <div class="meta">
+    <span>2026-07-08</span><span>提案 9 条 → 合并/淘汰 → 5+1</span>
+    <span>A股 + 美股 · 只做多 · 日频</span><span>配套《智能选股分析系统 PRD v1.0》</span>
+  </div>
+</header>
+
+<!-- ========== 1 机制 ========== -->
+<section id="s1">
+  <h2><span class="no">1</span>讨论机制设计（怎么达成一致）</h2>
+  <p>三位研究员被刻意设定为<b>互相冲突的投资世界观</b>，保证分歧是真实的而非表演：</p>
+  <div class="personas">
+    <div class="persona p-a"><b>研究员 A · 趋势动量派</b><span>强者恒强，价格包含一切信息；赚市场反应不足的钱；认为"接飞刀"是散户亏钱主因</span></div>
+    <div class="persona p-b"><b>研究员 B · 基本面质量派</b><span>股价长期由盈利驱动；赚定价滞后与错杀折价的钱；认为纯技术信号是噪音交易</span></div>
+    <div class="persona p-c"><b>研究员 C · 均值回归 + 风控派</b><span>短期过度反应普遍存在；首席怀疑官：多数策略死于风控缺失而非信号错误</span></div>
+  </div>
+  <div class="steps">
+    <div class="step"><b>① 独立提案</b>三人互不可见<br>各提 3 条，共 9 条</div>
+    <div class="step"><b>② 交叉质询</b>逐条攻击他人提案<br>预判并回应对自己的攻击</div>
+    <div class="step"><b>③ 投票</b>各交一份"最终5条"名单<br>允许合并、允许砍自己的</div>
+    <div class="step"><b>④ 主席裁决</b>共识直接采纳<br>分歧按票数+论据强度裁决</div>
+  </div>
+  <p><b>达成一致的四条元规则</b>（讨论中自发形成，值得复用）：</p>
+  <ol>
+    <li><b>不裁决世界观，只裁决可证伪性</b>：接飞刀好还是追涨好不辩论，每条策略必须自带"什么情况下算被证伪、就废弃"的验收条件（参数敏感性军令状）。</li>
+    <li><b>重叠策略按"选股归基本面、择时归价格"分工合并</b>：谁的条件更不易过拟合保留谁的。</li>
+    <li><b>尾部风险必须显式定价</b>：不允许"靠扛"；每条策略要算清最坏情形对组合的损失（仓位上限 × 单票最大亏损）。</li>
+    <li><b>择时权统一上收</b>：各策略删除自带的指数级闸门，市场状态判断由唯一的组合级闸门负责，避免重复参数和双重绞杀。</li>
+  </ol>
+</section>
+
+<!-- ========== 2 第一轮 ========== -->
+<section id="s2">
+  <h2><span class="no">2</span>第一轮：9 条独立提案概览</h2>
+  <table>
+    <tr><th>#</th><th>提案</th><th>核心逻辑（赚谁的钱）</th><th>持有周期</th><th>最终命运</th></tr>
+    <tr><td>A1</td><td>52周新高突破 + 量能确认</td><td>锚定效应导致的突破后续涨</td><td>1–4月</td><td><span class="badge b-green">入选</span>修订为策略一</td></tr>
+    <tr><td>A2</td><td>12-1 横截面动量轮动</td><td>反应不足 + 机构建仓惯性</td><td>3–6月</td><td><span class="badge b-red">3:0 否决</span>因子降级为排序器</td></tr>
+    <tr><td>A3</td><td>财报 PEAD（价格确认版）</td><td>财报好消息的定价滞后</td><td>1–2月</td><td><span class="badge b-amber">合并</span>与 B1 → 策略二</td></tr>
+    <tr><td>B1</td><td>盈利加速 × 价格确认</td><td>同上（基本面验真更强）</td><td>2–3月</td><td><span class="badge b-amber">合并</span>与 A3 → 策略二</td></tr>
+    <tr><td>B2</td><td>优质公司折价回归</td><td>机构被迫抛售优质股的错杀</td><td>0.5–1年</td><td><span class="badge b-amber">合并</span>与 C2 → 策略三</td></tr>
+    <tr><td>B3</td><td>盈利动量持有</td><td>市场对"持续兑现"的怀疑折价</td><td>2–4季度</td><td><span class="badge b-green">2:1 入选</span>收紧为策略五</td></tr>
+    <tr><td>C1</td><td>恐慌错杀回补（RSI超卖）</td><td>强制卖出者（止损/杠杆盘）的钱</td><td>2–7日</td><td><span class="badge b-green">入选</span>加装验真 → 策略四</td></tr>
+    <tr><td>C2</td><td>财报后错杀修复</td><td>指数化无差别抛售的定价误差</td><td>1–4月</td><td><span class="badge b-amber">合并</span>与 B2 → 策略三</td></tr>
+    <tr><td>C3</td><td>市场状态闸门</td><td>不赚钱，省掉熊市接飞刀的钱</td><td>常驻</td><td><span class="badge b-purple">基础设施</span>不占名额 → 策略〇</td></tr>
+  </table>
+</section>
+
+<!-- ========== 3 质询 ========== -->
+<section id="s3">
+  <h2><span class="no">3</span>第二轮：交叉质询的关键交锋</h2>
+  <p class="sub">每人对其他六条提案逐条攻击并为自己辩护。以下是决定了最终结论的七次交锋（完整纪要见附录文件）：</p>
+  <table>
+    <tr><th>交锋</th><th>攻击</th><th>回应/结果</th></tr>
+    <tr><td><b>① A2 之死</b></td><td>B、C 一致：80 只池取 Top8 是"在噪声里排序"，横截面动量需要几千只票的宽度；A股中大盘 12-1 动量先验收益趋零甚至为负</td><td>A 本人承认："池太窄是我三条里理论根基被伤得最重的"，<b>主动砍掉自己的提案</b>，动量因子降级为策略一信号并发时的排序器</td></tr>
+    <tr><td><b>② PEAD 归属之争</b></td><td>B："A3 是我的 B1 加了一层价格化妆"；A 反击："B1 的 20 日确认窗口有前视污染风险，且在吃自己的 alpha——确认达成时漂移最肥的头 20 日已经过去"；C 补刀："B1 证伪退出是季频的，中间层裸奔三个月"</td><td>三方同意合并：<b>基本面验真归 B（OCF 现金流验真），事件锚定与入场时效归 A（放量跳涨+5日收复）</b>，B1 的 20 日确认窗口被抛弃</td></tr>
+    <tr><td><b>③ "钝化 vs 止跌"</b></td><td>A、C 同攻 B2："近20日回撤≤10% 的钝化条件<b>专门放行慢性阴跌型价值陷阱、专门挡住真错杀</b>，方向筛反了"</td><td>B 让步，接受 C2 的"近3日止跌 + 财报新鲜度≤60日"替换钝化条件；C 让步接受 B2 更严的质量门槛。合并为策略三</td></tr>
+    <tr><td><b>④ 接飞刀原罪</b></td><td>A、B 同攻 C1："5日跌6%+超卖的画像恰好富集即将暴雷的股票；RSI3<15 是魔法数字"；B："至少加基本面健康检查——但加了它就变成 C2 了，你独立存在的价值是什么？"</td><td>C 辩护：暴雷显性特征（跌停/天量/趋势死亡）已被条件排除，尾部已定价（5%仓位×最坏−30%=组合−1.5%）；<b>接受加装 B 的健康检查和财报回避窗口</b>；立下军令状：RSI3 在 10–20 全区间不稳定即整条废弃</td></tr>
+    <tr><td><b>⑤ 止损的真实性</b></td><td>C 对全场："A1 的 −8%、B3 的 −25% 在 T+1 + 跌停下是纸面数字，实际实现 −12%~−22%；所有回测必须按'跌停日不可成交'重跑"</td><td>三方共识：<b>现实撮合规则（跳空按开盘价、跌停日禁成交）列为所有策略的上线前置验收</b>，写入系统回测引擎需求</td></tr>
+    <tr><td><b>⑥ 闸门管多宽</b></td><td>B 攻 C3："熊市总仓≤25% 一刀切，等于在估值最便宜、我的策略期望最高的时刻强制我空仓——这是把 C 的世界观通过闸门强加给全组"</td><td>C 接受 B 的<b>长短仓分离</b>修正：熊市里短持类禁新开仓，长持类只禁新开、存量按自身规则退出。A 要求并获得：切熊后存量降仓顺序规则补全 + 阈值敏感性矩阵备案</td></tr>
+    <tr><td><b>⑦ 第五席之争</b></td><td>A 主张砍 B3（"七层条件月0–2信号，是对过去十年白马行情的一次性拟合"）；B 主动把 B3 降级为 PEAD 的持有延长模块；C 反而主张保留收紧版（"组合缺一条与策略三买点相反的长持腿"）</td><td>见第 4 节主席裁决</td></tr>
+  </table>
+</section>
+
+<!-- ========== 4 投票 ========== -->
+<section id="s4">
+  <h2><span class="no">4</span>投票结果与分歧裁决</h2>
+  <table>
+    <tr><th>议题</th><th>A</th><th>B</th><th>C</th><th>结果</th></tr>
+    <tr><td>否决 A2（动量轮动）</td><td>弃（自砍）</td><td>反对入选</td><td>反对入选</td><td><b>3:0 淘汰</b>，因子保留为排序器</td></tr>
+    <tr><td>合并 A3⊕B1 为事件PEAD</td><td>赞成</td><td>赞成</td><td>赞成</td><td><b>3:0 通过</b>（策略二）</td></tr>
+    <tr><td>合并 B2⊕C2 为质量折价</td><td>赞成（附条件）</td><td>赞成</td><td>赞成（自砍C2）</td><td><b>3:0 通过</b>（策略三）</td></tr>
+    <tr><td>保留 A1 突破（带验收条件）</td><td>赞成</td><td>赞成（附滑点惩罚）</td><td>赞成（附四条件）</td><td><b>3:0 通过</b>（策略一）</td></tr>
+    <tr><td>保留 C1 回补（带军令状）</td><td>赞成（附条件）</td><td>赞成（附健康检查）</td><td>赞成</td><td><b>3:0 通过</b>（策略四）</td></tr>
+    <tr><td>C3 定位为不占名额的基础设施</td><td>赞成</td><td>赞成</td><td>赞成</td><td><b>3:0 通过</b>（策略〇）</td></tr>
+    <tr><td>第五席给 B3 收紧版</td><td>反对</td><td>半支持（降级为模块）</td><td>支持（收紧版）</td><td><b>主席裁决：入选</b>，见下</td></tr>
+  </table>
+  <div class="callout info"><b>主席裁决记录：第五席</b>
+  裁决理由：① 组合结构需要——策略一至四的持有周期为 2天~4个月，缺一条跨季度长持腿；且策略五买"强势兑现"与策略三买"折价错杀"买点相反，构成风格对冲；② C（对 B3 最挑剔的风控派）审查后转为支持，其收紧条件全部采纳：止损 −25%→−20%、PE 分位 80→70、删除"120日落后基准>15%"退出（风格底部割肉机）改由闸门管理；③ A 的反对意见转化为上线验收门槛：跌停不可成交撮合复测 + 删任一条件收益大变则废弃；④ B 的"降级为模块"方案保留为联动规则：策略二 45 日到期时若满足策略五入选条件，可转入长持轨道。<b>各方核心关切均被吸收，此为条件收敛而非多数碾压。</b></div>
+</section>
+
+<!-- ========== 5 共识 ========== -->
+<section id="s5">
+  <h2><span class="no">5</span>最终共识：5 条策略 + 1 个闸门</h2>
+  <table>
+    <tr><th>#</th><th>策略</th><th>类型</th><th>持有周期</th><th>预期信号频率</th><th>最佳市况</th></tr>
+    <tr><td>〇</td><td>市场状态闸门</td><td>组合级风控（不产生信号）</td><td>常驻</td><td>状态切换每年2–4次</td><td>全天候</td></tr>
+    <tr><td>一</td><td>趋势突破</td><td>右侧进攻</td><td>1–4月</td><td>趋势市月3–6个</td><td>牛市/趋势市</td></tr>
+    <tr><td>二</td><td>事件 PEAD</td><td>事件驱动</td><td>1–2月</td><td>财报季月3–6个</td><td>对市况依赖低</td></tr>
+    <tr><td>三</td><td>质量折价回归</td><td>左侧价值</td><td>0.5–1年</td><td>月1–3个</td><td>熊末/震荡</td></tr>
+    <tr><td>四</td><td>恐慌错杀回补</td><td>短线均值回归</td><td>2–7日</td><td>震荡市月4–8个</td><td>牛市/震荡</td></tr>
+    <tr><td>五</td><td>盈利动量持有</td><td>基本面长持</td><td>2–4季度</td><td>月0–2个</td><td>牛市/结构市</td></tr>
+  </table>
+  <p class="sub">收益来源彼此独立（锚定效应 / 定价滞后 / 错杀折价 / 强制卖出流动性 / 持续性怀疑折价），持有周期梯次分布，买点左右侧对冲。</p>
+
+  <!-- 策略〇 -->
+  <div class="stgy" id="g0">
+    <div class="stgy-head sh-0"><h3>策略〇 · 市场状态闸门</h3>
+      <span class="badge b-purple">基础设施</span><span class="badge b-blue">3:0 通过</span><span>来源：C3 + B 的长短仓分离修正 + A 的降仓规则补全</span></div>
+    <div class="stgy-body">
+      <p><b>作用</b>：用基准指数数据把市场分为牛/震荡/熊三态，作为五条策略的总开关与仓位调节阀。它不赚钱，它省掉熊市里接飞刀和动量崩溃的钱。A股/美股各用各的基准独立判态。</p>
+      <h4>状态判定（每日收盘，T+1 生效）</h4>
+      <pre><code>trend = 指数close &gt; SMA(指数close, 200)
+mom   = 指数close / 指数close[t-60] − 1          <span class="cm"># 60日动量</span>
+vol   = std(指数日收益, 20) × √252                <span class="cm"># 20日年化波动</span>
+dd    = 指数close / max(指数close, 近250日) − 1   <span class="cm"># 距一年高点回撤</span>
+
+熊市   = (非trend 且 mom &lt; −5%) 或 dd &lt; −20%     <span class="cm"># dd是独立熔断条款</span>
+牛市   = trend 且 mom ≥ 3% 且 vol ≤ 25%（A股vol阈值放宽至30%，写死禁改）
+震荡市 = 其余
+防抖：状态切换需连续 5 个交易日满足新状态才正式切换</code></pre>
+      <h4>对五条策略的调制</h4>
+      <table>
+        <tr><th>状态</th><th>短持类（策略一/二/四）</th><th>长持类（策略三/五）</th><th>总仓上限</th></tr>
+        <tr><td>牛市</td><td>正常运行</td><td>正常运行</td><td>80%</td></tr>
+        <tr><td>震荡</td><td>正常运行（策略四的最佳环境）</td><td>正常运行</td><td>60%</td></tr>
+        <tr><td>熊市</td><td>禁止新开仓；存量时间止损减半</td><td>禁止新开仓；存量按自身规则自然退出（B 的修正：不强制腰斩长持仓）</td><td>短持类合计≤25%</td></tr>
+      </table>
+      <p><b>切熊降仓顺序</b>（A 要求补全）：超出上限时按浮亏从大到小、非跌停日限价卖出。</p>
+      <div class="callout warn"><b>上线验收（可证伪条件）</b>① 防抖天数 3/5/7、mom ±5%、dd −20% 三组参数敏感性矩阵备案，判定结果对参数高度敏感则闸门本身视为过拟合；② 2018 A股、2022 美股回测中，闸门须把挂接策略的最大回撤压到裸信号的 60% 以下，否则回炉。<b>已知成本</b>：V 型反转（2020/3 型）必然滞后，错过反弹第一波，这是买尾部保护的保费。</div>
+    </div>
+  </div>
+
+  <!-- 策略一 -->
+  <div class="stgy" id="g1">
+    <div class="stgy-head sh-1"><h3>策略一 · 趋势突破（52周新高 × 量能确认）</h3>
+      <span class="badge b-red">趋势 · 右侧</span><span class="badge b-blue">3:0 通过</span><span>来源：A1 + 泡沫刹车 + C 的四项验收条件</span></div>
+    <div class="stgy-body">
+      <p><b>逻辑</b>：赚锚定效应的钱——投资者锚定历史高点，股价接近前高时因"太贵"惜买，好消息被消化不足；真突破后压制解除，信息缓慢扩散推动续涨。锚定是人性，不会被套利掉。</p>
+      <div class="kv"><div>数据：<b>日K（价/量/额）</b></div><div>持有：<b>1–4月</b></div><div>单票上限：<b>8%</b></div><div>市场：<b>两者（美股更干净）</b></div></div>
+      <h4>买入条件（T 日收盘全部满足，T+1 开盘执行）</h4>
+      <pre><code>A. close[T] ≥ max(high[T-250 .. T-1])            <span class="cm"># 突破250日最高</span>
+B. volume[T] ≥ 1.5 × mean(volume[T-20 .. T-1])   <span class="cm"># 放量确认——核心交叉证据：</span>
+                                                  <span class="cm"># 价新高×量1.5倍 = 有增量资金背书，缺一即假突破</span>
+C. close[T] &gt; SMA(close, 50)                      <span class="cm"># 中期趋势冗余保护</span>
+D. 泡沫刹车：池内20日新高股票占比 &gt; 40% 时暂停新开仓  <span class="cm"># 信号过密本身是过热指标（2015教训）</span>
+E. 剔除当日涨幅 &gt; 9% 的A股（次日追高滑点毁灭信号）
+F. 并发排序：多个突破信号同日出现时，按 12-1 动量分降序优先（A2 的遗产）
+注：原自带指数&gt;SMA200 闸门已删除，择时权上收策略〇</code></pre>
+      <h4>卖出条件（任一触发，T+1 开盘执行）</h4>
+      <pre><code>a. 吊灯止损: close &lt; max(high[入场日..T-1]) − 3×ATR(20)   <span class="cm"># 水位用T-1数据，防未来函数</span>
+b. 趋势破位: close &lt; SMA(close, 50) 连续 3 日
+c. 初始硬止损: close &lt; 入场价 × 0.92</code></pre>
+      <div class="callout warn"><b>上线验收 + 已知失效场景</b>验收：① 回测按次日开盘价成交并计入 1% 滑点惩罚，惩罚后年化超额转负则废弃（B 的条件）；② 1.5×量能 / 3×ATR / −8% 参数敏感性报告，任一翻转回炉（C 的条件）；③ 涨停突破的两种处理（剔除 vs 次日竞价接力）差异报告。失效场景：震荡市假突破绞杀（胜率可低至 30%，靠盈亏比与闸门生存）；T+1 下跳空穿止损，实际止损分布按 −12% 建模；连续 8–10 次止损是统计必然，评估看期望不看胜率。</div>
+    </div>
+  </div>
+
+  <!-- 策略二 -->
+  <div class="stgy" id="g2">
+    <div class="stgy-head sh-2"><h3>策略二 · 事件 PEAD（盈利加速 × 放量确认）</h3>
+      <span class="badge b-amber">事件驱动</span><span class="badge b-blue">3:0 合并通过</span><span>来源：A3 ⊕ B1（事件锚定归 A，基本面验真归 B）</span></div>
+    <div class="stgy-body">
+      <p><b>逻辑</b>：赚财报好消息定价滞后的钱（PEAD，60 年文献最顽固的异象）。基本面腿保证"改善是真的"（防营收注水），价格腿保证"市场投票承认且尚未定价完"（防买到已被业绩预告透支的事件）——这是两派各出一半的完整策略。</p>
+      <div class="kv"><div>数据：<b>季度财务（含披露日）+ 日K</b></div><div>持有：<b>1–2月</b></div><div>信号：<b>财报季月3–6个</b></div><div>市场：<b>两者（对市况依赖最低）</b></div></div>
+      <h4>买入条件（事件驱动）</h4>
+      <pre><code><span class="cm"># 事件日 R 的定义写死（C 的要求，防定义腐蚀）：业绩预告与正式披露中信息增量更大的
+# 那一次为事件；盘后/非交易日公告 → R 顺延至次一交易日</span>
+基本面腿（B 的贡献，字段一律按披露日+1生效）:
+  F1. 营收同比增速 &gt; 上一季度营收同比增速，且 &gt; 0    <span class="cm"># 增速加速，看边际不看绝对</span>
+  F2. ROE_ttm ≥ 8%                                   <span class="cm"># 质量底线</span>
+  F3. 经营现金流 OCF &gt; 0                              <span class="cm"># 现金流验真，防并购/一次性收入注水</span>
+价格腿（A 的贡献，核心交叉证据）:
+  P1. R日: 涨幅 ≥ +3% 且 volume ≥ 2.0 × 20日均量      <span class="cm"># 放量跳涨 = 市场投票"真超预期"</span>
+  P2. R 后 5 个交易日内 close ≥ high[R] → 触发买入      <span class="cm"># 回踩收复，逐日可判定</span>
+  P3. close &gt; SMA(close, 200)
+超过 R+5 未触发 → 信号作废不追。F×P 同时成立才是"可持续漂移"的证据：
+只有财务好没放量 = 市场不买账；只有跳涨没财务 = 消息炒作。</code></pre>
+      <h4>卖出条件（任一触发）</h4>
+      <pre><code>a. 时间退出: 持有满 45 个交易日（漂移有半衰期；30/45/60 敏感性检验）
+b. 基本面证伪: 新财报 营收转负 或 OCF &lt; 0 → 披露日+1 无条件清仓（B 的贡献）
+c. 硬止损: −12%（两家折中；A 原"破R日低点"因风险距离过宽被弃用）
+d. 下次财报披露前 1 日若浮盈 &lt; 5% → 提前退出（不赌下一次财报）</code></pre>
+      <div class="callout warn"><b>已知失效场景</b>A股业绩预告制度会稀释正式披露日的信息量——价格腿 P1 正是防线：已被预告透支的披露日不会再放量跳涨；美股大盘股 PEAD 漂移窗口近年缩短，45 日时间退出的敏感性检验为此而设；单季财务可被一次性损益扭曲，F3 与 b 是仅有的两道防线。</div>
+    </div>
+  </div>
+
+  <!-- 策略三 -->
+  <div class="stgy" id="g3">
+    <div class="stgy-head sh-3"><h3>策略三 · 质量折价回归（质量 × 估值 × 企稳）</h3>
+      <span class="badge b-green">左侧价值</span><span class="badge b-blue">3:0 合并通过</span><span>来源：B2 ⊕ C2（选股归 B，择时与风控归 C）</span></div>
+    <div class="stgy-body">
+      <p><b>逻辑</b>：赚优质公司被恐慌错杀的钱——机构因排名压力被迫抛售、ETF 赎回无差别砸盘造成的定价误差，而这个折价在只做多市场没有天然套利者。三张表交叉是灵魂：财务（公司没坏）× 估值（便宜了）× 价格（跌够了且止跌）。任何单一维度都会失败。</p>
+      <div class="kv"><div>数据：<b>季度财务 + 周度快照(PB) + 日K</b></div><div>持有：<b>0.5–1年</b></div><div>信号：<b>月1–3个</b></div><div>市场：<b>两者（A股折价更深、回归更暴力）</b></div></div>
+      <h4>买入条件（全部满足）</h4>
+      <pre><code>质量门槛（B 的贡献，防价值陷阱）:
+  A1. ROE_ttm ≥ 12%，且连续最近 4 个已披露季度 ROE_ttm ≥ 10%
+  A2. 近 4 个已披露季度中至少 3 季 OCF &gt; 0
+  A3. 最新营收同比 &gt; −15%（允许轻度承压，排除断崖）
+  A4. 剔除：存在未回复交易所问询函 / 年报非标审计意见（B 接受质询后新增的防造假补丁）
+估值折价（核心证据）:
+  B1. PB ≤ 自身过去 3 年周度序列 20% 分位（BPS 严格按披露日生效——A 质询后明确）
+  B2. PE &gt; 0（剔除亏损导致的假低PB）
+入场纪律（C 的贡献，替换 B2 原"钝化"条件——该条件被判定为放行慢性阴跌）:
+  C1. 距 60 日高点回撤 &gt; 15%，且相对基准 20 日超跌 &gt; 8%   <span class="cm"># 确认是"被砸"不是"横着便宜"</span>
+  C2. 近 3 日止跌: close &gt; close[t−3]                     <span class="cm"># 最低限度的右侧确认</span>
+  C3. 财报新鲜度: 距最新披露日 ≤ 60 个交易日               <span class="cm"># 不拿一年前的财报当护身符</span>
+退出后同一股票 60 个交易日冷却。</code></pre>
+      <h4>卖出条件（任一触发）</h4>
+      <pre><code>a. 估值回归: PB 回升至自身 3 年 60% 分位 → 止盈
+b. 基本面证伪: 新财报 ROE_ttm &lt; 8% 或 连续两季 OCF &lt; 0 → 无条件清仓（C 版：更果断）
+c. 硬止损: −15%（C 版否决了 B 原来的 −20%）
+d. 时间退出: 250 个交易日未触发 a/b → 退出（一年不回归说明折价有你看不到的理由）</code></pre>
+      <div class="callout warn"><b>已知失效场景</b>价值陷阱是头号杀手——ROE 是滞后指标，"还没垮但商业模式已被判死刑"的公司挡不住，靠 c/d 兜底；高ROE+低PB+现金流正常与部分造假公司画像重合（A4 补丁只能降频不能根除，靠单票上限消化）；系统性熊市中分位持续下移会反复接刀，靠策略〇熊市禁新开仓托底。低频策略样本少，回测结论主动打折（C 的自我警告保留在案）。</div>
+    </div>
+  </div>
+
+  <!-- 策略四 -->
+  <div class="stgy" id="g4">
+    <div class="stgy-head sh-4"><h3>策略四 · 恐慌错杀回补（超卖短线）</h3>
+      <span class="badge b-blue">短线均值回归</span><span class="badge b-blue">3:0 通过</span><span>来源：C1 + B 的基本面健康检查 + C 自加的财报回避窗口</span></div>
+    <div class="stgy-body">
+      <p><b>逻辑</b>：赚被迫卖出者的钱——止损盘、赎回、杠杆平仓的抛售不是基于新判断而是"必须卖"；T+1 和涨跌停延缓价格修复，给次日入场留下利润空间。只买长期趋势完好的"活人"，绝不接"死人"的刀。</p>
+      <div class="kv"><div>数据：<b>日K + 最新财报</b></div><div>持有：<b>2–7日</b></div><div>信号：<b>震荡市月4–8个</b></div><div>单票上限：<b>5%</b></div></div>
+      <h4>买入条件（全部满足）</h4>
+      <pre><code>活人判定: close &gt; SMA200 且 SMA200 今日值 &gt; 20日前值      <span class="cm"># 长期趋势健康</span>
+挨刀判定: RSI(3) &lt; 15  且  close &lt; SMA5  且  5日累跌 &gt; 6%  <span class="cm"># 短期恐慌超卖</span>
+崩溃排除（区分"恐慌"与"出事了"）:
+  近5日无跌停（美股等效：无单日−15%）；当日非跌停收盘
+  5日均成交额 / 60日均成交额 &lt; 3.0                        <span class="cm"># 排除天量出货</span>
+健康检查（B 的贡献）: 最新已披露财报 ROE_ttm &gt; 0 且 OCF &gt; 0
+事件回避（C 质询后自加）: 距下一已知财报/预告披露日 &gt; 5 个交易日
+<span class="cm"># 三维交叉证据：趋势数据(200日线) × 短期价格(RSI3+累跌) × 微观结构(跌停/天量排除)</span></code></pre>
+      <h4>卖出条件（按优先级）</h4>
+      <pre><code>a. 目标达成: RSI(3) &gt; 60 → 修复即走，不贪
+b. 时间止损: 持有满 7 个交易日无条件卖出（熊市减半为 3 日——策略〇调制）
+c. 灾难止损: close &lt; 入场价 × 0.93
+d. 趋势失效: close &lt; SMA200
+A股跌停无法成交时次日继续挂卖；5% 仓位上限即为此场景预留（最坏连续跌停单票
+−30% × 5% = 组合 −1.5%，尾部已显式定价）。</code></pre>
+      <div class="callout warn"><b>军令状（上线验收，C 本人立下）</b>① RSI3 阈值 10–20、5日累跌 5%–8% 全区间结果必须同向且期望为正，任一翻转<b>整条废弃</b>；② 补"次日低开>5% 按开盘价止损"的现实撮合规则重跑回测；③ 无法区分恐慌与暴雷第一波是本策略原罪——健康检查与回避窗口只能降频，残余风险由仓位上限定价，不假装不存在。</div>
+    </div>
+  </div>
+
+  <!-- 策略五 -->
+  <div class="stgy" id="g5">
+    <div class="stgy-head sh-5"><h3>策略五 · 盈利动量持有（基本面长持）</h3>
+      <span class="badge b-purple">基本面趋势</span><span class="badge b-amber">2:1 主席裁决入选</span><span>来源：B3 收紧版（C 的三项收紧 + A 的验收门槛 + B 的转轨联动）</span></div>
+    <div class="stgy-body">
+      <p><b>逻辑</b>：赚"持续性怀疑折价"的钱——连续多季兑现高增长的公司，市场每季度都重新怀疑一次其持续性，而经营趋势有强惯性。本质是承担"增长突然中断"的尾部风险换取的风险溢价，不是免费的。与策略三买点相反（买强势 vs 买折价），构成风格对冲。</p>
+      <div class="kv"><div>数据：<b>季度财务 + 周度快照(PE) + 日K</b></div><div>持有：<b>2–4季度</b></div><div>信号：<b>月0–2个</b></div><div>同持上限：<b>8只</b></div></div>
+      <h4>买入条件（每月末检查）</h4>
+      <pre><code>A. 连续 3 个已披露季度: rev_yoy &gt; 10% 且 ROE_ttm &gt; 15%   <span class="cm"># 一季是运气，三季是能力</span>
+B. 近 2 季 OCF &gt; 0
+C. PE ≤ 自身 3 年 70% 分位            <span class="cm"># C 收紧: 原 80 分位约束力≈0，2020年底白马全通过</span>
+D. 过去 120 日累计收益 &gt; 基准指数      <span class="cm"># 长窗口相对强度=市场持续认可的价格影子，</span>
+                                       <span class="cm"># 刻意钝化，避免退化成月度价格动量</span>
+超额信号按 ROE_ttm 降序取前 8。
+联动（B 的贡献）: 策略二持仓 45 日到期时若满足本策略 A–D → 转入长持轨道。</code></pre>
+      <h4>卖出条件</h4>
+      <pre><code>a. 基本面中断（即时）: 新财报 rev_yoy &lt; 0 或 ROE_ttm &lt; 12% 或 OCF &lt; 0 → 退出
+   <span class="cm"># 增长股的第一次坏消息几乎从不是最后一次，不等第二季确认</span>
+b. 移动止损（即时）: 持有期最高收盘价回撤 −20%（C 收紧: 原 −25% 是验尸报告不是止损）
+c. 估值泡沫（月末）: PE &gt; 自身 3 年 95% 分位 → 退出
+<span class="cm"># 原"120日落后基准&gt;15%退出"已删除——被 C 判定为"风格底部割肉机"，风格风险改由策略〇管理</span></code></pre>
+      <div class="callout warn"><b>上线验收 + 已知失效场景</b>验收（A 的反对意见转化）：① 回测必须按"跌停日不可卖出"撮合规则重跑，白马雷的一字跌停是本策略固有成本；② 删除 A–D 任一条件后收益大变则视为过拟合废弃。失效场景：2021 式核心资产崩塌是已经演习过的尾部剧本（书面承认在案）；风格切换期连续 6–12 个月跑输是常态，必须以 3 年视角评估；高 ROE 可能由高杠杆驱动（无负债字段），靠行业上限约束。</div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 6 落地 ========== -->
+<section id="s6">
+  <h2><span class="no">6</span>组合配置与系统落地</h2>
+  <h3>6.1 资金配置建议（初始值，待回测归因后调整）</h3>
+  <table>
+    <tr><th>策略</th><th>一 突破</th><th>二 PEAD</th><th>三 折价</th><th>四 回补</th><th>五 长持</th></tr>
+    <tr><td>资金占比</td><td>25%</td><td>20%</td><td>20%</td><td>10%</td><td>25%</td></tr>
+    <tr><td>单票上限</td><td>8%</td><td>8%</td><td>8%</td><td>5%</td><td>8%</td></tr>
+  </table>
+  <p>组合级约束继承股票池规则（单行业≤20%）；同一股票被多条策略同时触发时合并计仓，总敞口不超过单票上限的 1.5 倍。</p>
+
+  <h3>6.2 与系统规则引擎的映射</h3>
+  <ul>
+    <li>每条策略实现为 PRD §5.1 规则引擎中的一个 <code>StrategyRuleSet</code>（一组 Rule 类 + 独立的退出状态机），策略〇实现为组合级 <code>RegimeGate</code> 中间件。</li>
+    <li>五条策略分别独立回测、独立归因（PRD §6 回测引擎），再做组合级合成回测——单策略不达标不允许进组合。</li>
+    <li>全部"上线验收"条款（敏感性军令状、现实撮合复测、滑点惩罚）写入 PRD §11 测试策略，作为 M3 决策门的验收清单。</li>
+    <li>信号追踪（PRD §6.6）按策略分桶统计成绩单，任一策略实盘滚动表现与回测预期严重背离时单独停用，不牵连其余。</li>
+  </ul>
+
+  <div class="callout risk"><b>全体研究员联署的最后声明</b>以上策略是三个流派在给定数据约束下的共识输出，<b>未经回测验证前全部只是假设</b>。任何一条上线前必须通过：5 年历史回测（含 2018 A股、2022 美股熊市段）、样本外验证、现实撮合规则复测、参数敏感性检验四道门。本文档不构成投资建议。</div>
+</section>
+
+<footer>
+  量化策略共识方案 · 三研究员辩论纪要 · 2026-07-08<br>
+  配套文档：《智能选股分析系统方案 v1.0》 · 输出为规则引擎的机械结果，不构成投资建议
+</footer>
+
+</main>
+</div>
+</body>
+</html>
