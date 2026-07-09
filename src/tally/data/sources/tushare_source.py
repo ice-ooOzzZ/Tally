@@ -23,6 +23,7 @@
 from __future__ import annotations
 
 import os
+import threading
 import time
 from collections.abc import Sequence
 from typing import Protocol
@@ -226,9 +227,18 @@ class TushareSource:
             retry_sleep: 重试之间的等待函数；测试注入 no-op 以避免真实 sleep。
         """
         self._rate_limiter = rate_limiter
-        self._token = token if token is not None else os.environ.get(_TOKEN_ENV_VAR, "")
+        raw_token = token if token is not None else os.environ.get(_TOKEN_ENV_VAR, "")
+        # 全空白 token（如误配 `TUSHARE_TOKEN="   "`）在 truthy 检查下会通过（非空
+        # 字符串），但对 Tushare API 而言等价于缺失；strip 后为空一律按"未配置"处理，
+        # 在本地给出清晰报错而不是让请求带着空白 token 打到远端（F4）。
+        self._token = raw_token.strip()
         self._injected_transport = transport
         self._real_transport: TushareTransport | None = None
+        # 保护 `_real_transport` 的惰性构建：多线程首次并发调用（T1.3 多线程拉取）
+        # 若不加锁，可能重复执行 `ts.pro_api(token)`（重复鉴权/建连），与"惰性建
+        # 一次并复用"的设计意图不符（F2）。只在真正构建时短暂持锁，构建完成后的
+        # 读取路径（已缓存）不受影响。
+        self._transport_lock = threading.Lock()
         self._retry_attempts = retry_attempts
         self._retry_wait_min_s = retry_wait_min_s
         self._retry_wait_max_s = retry_wait_max_s
@@ -242,22 +252,29 @@ class TushareSource:
         if self._real_transport is not None:
             return self._real_transport
 
-        if not self._token:
-            raise TushareAuthError(
-                "TUSHARE_TOKEN 未设置或为空：请在项目根目录 .env 中配置 "
-                "TUSHARE_TOKEN=<你的 Tushare Pro token> 后重试。"
-                "（回放测试应注入 fake transport，不应走到这条真实调用路径。）"
-            )
-        try:
-            import tushare as ts  # 延迟导入：模块级 import 不得要求已安装 tushare
-        except ImportError as exc:
-            raise TushareAuthError(
-                "未安装 tushare 包：请 `uv sync --extra data` 后重试"
-                "（生产/录制模式需要真实 SDK；回放测试应注入 fake transport）。"
-            ) from exc
+        # 双检锁：绝大多数调用命中上面的无锁快路径（已缓存），只有首次真正构建
+        # 真实 transport 时才需要互斥，避免多线程并发首次调用重复
+        # `ts.pro_api(token)`（重复鉴权/建连，见 F2）。
+        with self._transport_lock:
+            if self._real_transport is not None:
+                return self._real_transport
 
-        self._real_transport = ts.pro_api(self._token)
-        return self._real_transport
+            if not self._token:
+                raise TushareAuthError(
+                    "TUSHARE_TOKEN 未设置或为空：请在项目根目录 .env 中配置 "
+                    "TUSHARE_TOKEN=<你的 Tushare Pro token> 后重试。"
+                    "（回放测试应注入 fake transport，不应走到这条真实调用路径。）"
+                )
+            try:
+                import tushare as ts  # 延迟导入：模块级 import 不得要求已安装 tushare
+            except ImportError as exc:
+                raise TushareAuthError(
+                    "未安装 tushare 包：请 `uv sync --extra data` 后重试"
+                    "（生产/录制模式需要真实 SDK；回放测试应注入 fake transport）。"
+                ) from exc
+
+            self._real_transport = ts.pro_api(self._token)
+            return self._real_transport
 
     # ---- 单次调用：限流 + 异常归类 ------------------------------------------------
 
@@ -325,8 +342,16 @@ class TushareSource:
         start_date: str | None,
         end_date: str | None,
     ) -> pd.DataFrame:
+        # `codes=None` 与 `codes=[]` 语义不同（F1）：`None` 表示"未指定 → 走全市场"
+        # （`ts_code=""`，Tushare 语义为不按该字段过滤）；空序列表示"调用方明确
+        # 无需求"（如 T1.3 观察名单为空），此时必须提前返回空结果，绝不能静默退化
+        # 成一次全市场调用——否则会在名单为空的场景意外消耗一次全市场 Tushare
+        # 配额。提前返回时甚至不解析/构建 transport，因为根本不需要发起任何调用。
+        if codes is not None and len(codes) == 0:
+            return pd.DataFrame()
+
         transport = self._resolve_transport()
-        code_list: list[str | None] = list(codes) if codes else [None]
+        code_list: list[str | None] = list(codes) if codes is not None else [None]
         frames = [
             self._call_with_retry(
                 transport,

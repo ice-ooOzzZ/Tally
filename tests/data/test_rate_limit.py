@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import threading
+import time
 
 import pytest
 
@@ -167,6 +168,53 @@ def test_registry_get_or_create_returns_same_instance_on_repeated_calls() -> Non
 
     assert first is second
     assert registry.get("tushare") is first
+
+
+def test_registry_get_or_create_concurrent_first_call_returns_same_instance() -> None:
+    """F3：T1.3 多线程拉取会让多个线程同时首次请求同一 source 的限流器。若
+    `get_or_create` 的"检查+插入"不加锁，多个线程都会看到"不存在"并各自新建
+    一个 `TokenBucket`，最终只有一个留在注册表里——先创建的那些实例持有的
+    限流状态会丢失，且任何提前拿到"先创建"那个引用的调用方会与注册表实际
+    生效的桶失去同步。
+
+    用一个会 sleep 的 `clock` 放大"检查"与"插入"之间的竞态窗口：多个线程
+    并发调用时，若不加锁，`clock` 被调用的次数会明显多于"只有一个线程真正
+    构建"的预期（`TokenBucket.__init__` 会调用一次 `clock()` 取初始
+    `_last_refill`）。
+    """
+    registry = RateLimiterRegistry()
+    clock_calls = 0
+    clock_calls_lock = threading.Lock()
+
+    def _slow_clock() -> float:
+        nonlocal clock_calls
+        with clock_calls_lock:
+            clock_calls += 1
+        time.sleep(0.02)  # 放大竞态窗口
+        return 0.0
+
+    results: list[TokenBucket] = []
+    results_lock = threading.Lock()
+    errors: list[BaseException] = []
+
+    def _worker() -> None:
+        try:
+            bucket = registry.get_or_create("tushare", 400.0, clock=_slow_clock)
+            with results_lock:
+                results.append(bucket)
+        except BaseException as exc:  # noqa: BLE001 - 记录异常以便主线程断言
+            errors.append(exc)
+
+    threads = [threading.Thread(target=_worker) for _ in range(8)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert errors == []
+    assert len(results) == 8
+    assert all(bucket is results[0] for bucket in results)  # 全部同一实例
+    assert clock_calls == 1  # 只有真正构建的那一次调用了 clock()
 
 
 def test_registry_supports_multiple_independent_sources() -> None:

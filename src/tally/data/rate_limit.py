@@ -94,6 +94,12 @@ class RateLimiterRegistry:
 
     def __init__(self) -> None:
         self._buckets: dict[str, TokenBucket] = {}
+        # 保护 `get_or_create` 的"检查+插入"：多线程同时首次请求同一 source 若不
+        # 加锁，会各自判断"不存在"并都新建一个 `TokenBucket`，最终字典里只留下
+        # 后写入的那个——先创建的那个实例持有的限流状态（哪怕只活了一瞬间）就
+        # 白白丢失，且任何提前拿到"先创建"那个实例引用的调用方会与注册表里实际
+        # 生效的桶失去同步。
+        self._get_or_create_lock = threading.Lock()
 
     def register(self, source: str, bucket: TokenBucket) -> None:
         """显式注册（或替换）某数据源的限流器。"""
@@ -118,11 +124,16 @@ class RateLimiterRegistry:
         sleep: Sleep = time.sleep,
     ) -> TokenBucket:
         """取已注册的限流器；不存在则按给定速率新建并注册。"""
-        if source not in self._buckets:
-            self._buckets[source] = TokenBucket(
-                rate_per_min, capacity=capacity, clock=clock, sleep=sleep
-            )
-        return self._buckets[source]
+        # 双检锁：绝大多数调用（source 已存在）走无锁快路径；只有多个线程同时
+        # 首次请求同一个尚未注册的 source 时才需要互斥（见 F3 与 __init__ 注释）。
+        if source in self._buckets:
+            return self._buckets[source]
+        with self._get_or_create_lock:
+            if source not in self._buckets:
+                self._buckets[source] = TokenBucket(
+                    rate_per_min, capacity=capacity, clock=clock, sleep=sleep
+                )
+            return self._buckets[source]
 
     def sources(self) -> tuple[str, ...]:
         """已注册的数据源名称（调试/单测用）。"""
