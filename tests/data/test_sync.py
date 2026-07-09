@@ -19,7 +19,7 @@ import pytest
 from tally.common.config.base import Market
 from tally.data.rate_limit import RateLimiterRegistry, TokenBucket
 from tally.data.repository import Repository
-from tally.data.sync import CodeSyncResult, SyncEngine
+from tally.data.sync import CodeSyncResult, SyncEngine, _fill_turnover_amt
 from tests.data.tushare_fixtures import ReplayTushareTransport
 
 _MARKET: Market = "CN"
@@ -296,3 +296,173 @@ def test_one_code_failure_does_not_block_other_codes(repo: Repository) -> None:
 
     assert repo.get_kline("600000", _MARKET).empty  # 失败票未写入任何脏数据
     assert len(repo.get_kline("000001", _MARKET)) == 3  # 其他票正常完成同步
+
+
+# ---- HIGH 修复：kline/valuation 非原子写入的自愈式续传 ----------------------------------
+
+
+def test_valuation_upsert_failure_reports_actual_kline_rows_and_self_heals_next_sync(
+    repo: Repository, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """合并审查 HIGH：kline 提交成功、valuation 提交失败——本次必须（1）如实报告
+    已写入的 kline_rows（不得归零，`CodeSyncResult` 契约），kline 确已落库；
+    （2）该票判失败；（3）下一次 sync（自愈式续传起点）必须重新补齐 valuation
+    缺口，且不重复破坏已有 kline 数据，最终 kline/valuation 行数一致。"""
+    engine = _engine(["600000.SH"], start=date(2024, 1, 2))
+    real_upsert_valuation = repo.upsert_valuation
+    call_count = {"n": 0}
+
+    def _flaky_upsert_valuation(rows: object) -> int:
+        call_count["n"] += 1
+        if call_count["n"] == 1:
+            raise RuntimeError("模拟 valuation 写入失败")
+        return real_upsert_valuation(rows)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(repo, "upsert_valuation", _flaky_upsert_valuation)
+
+    summary = engine.sync(
+        market=_MARKET, as_of_date=date(2024, 1, 4), transport=ReplayTushareTransport(), repo=repo
+    )
+
+    assert len(summary.failed) == 1
+    failed_result = summary.failed[0]
+    assert failed_result.code == "600000.SH"
+    assert failed_result.error is not None
+    # HIGH 修复核心断言：kline_rows 必须如实反映已写入行数，不能因为整体判
+    # 失败就归零（修复前的缺陷：异常路径永远报 kline_rows=0）。
+    assert failed_result.kline_rows == 3
+    assert failed_result.valuation_rows == 0
+
+    kline_after_failure = repo.get_kline("600000", _MARKET)
+    assert len(kline_after_failure) == 3  # kline 已落库，未因 valuation 失败被回滚
+    assert repo.get_valuation("600000", _MARKET).empty  # valuation 缺口仍未补上
+
+    # 下一次 sync：自愈——即使 as_of_date 不变，也必须重新补齐 valuation 缺口
+    # （证明续传起点取的是 kline/valuation 两者较小值，而非只看 kline）。
+    summary2 = engine.sync(
+        market=_MARKET, as_of_date=date(2024, 1, 4), transport=ReplayTushareTransport(), repo=repo
+    )
+
+    assert summary2.failed == ()
+    kline_final = repo.get_kline("600000", _MARKET)
+    valuation_final = repo.get_valuation("600000", _MARKET)
+    assert list(kline_final["date"]) == ["2024-01-02", "2024-01-03", "2024-01-04"]
+    assert list(valuation_final["date"]) == ["2024-01-02", "2024-01-03", "2024-01-04"]
+    assert len(kline_final) == len(valuation_final) == 3
+
+
+def test_resolve_missing_start_does_not_scan_full_kline_history(
+    repo: Repository, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """MEDIUM-2 修复验证：续传起点改用 `get_latest_kline_date`/
+    `get_latest_valuation_date`（`ORDER BY date DESC LIMIT 1`），不应再对整表
+    做 `get_kline(code, market)` 式的全量扫描。"""
+    engine = _engine(["600000.SH"], start=date(2024, 1, 2))
+    engine.sync(
+        market=_MARKET, as_of_date=date(2024, 1, 3), transport=ReplayTushareTransport(), repo=repo
+    )
+
+    def _boom(*_args: object, **_kwargs: object) -> pd.DataFrame:
+        raise AssertionError("_resolve_missing_start 不应再调用 get_kline 拉全表历史")
+
+    monkeypatch.setattr(repo, "get_kline", _boom)
+
+    summary = engine.sync(
+        market=_MARKET, as_of_date=date(2024, 1, 4), transport=ReplayTushareTransport(), repo=repo
+    )
+
+    assert summary.failed == ()
+
+
+# ---- MEDIUM-3：turnover_amt 关联前对重复 (code, market, date) 行的防御 -------------------
+
+
+def test_duplicate_kline_rows_for_same_key_are_rejected_before_persisting(
+    repo: Repository,
+) -> None:
+    """`_fill_turnover_amt` 按 (code, market, date) 关联；若 transport 异常返回了
+    重复行（如上游 fixture/接口缺陷），merge 会把 valuation 行静默展开、错配
+    turnover_amt。修复后必须在落库前拒绝，且不能已经写入任何脏数据。"""
+
+    class _DuplicateKlineRowTransport:
+        def __init__(self, inner: ReplayTushareTransport) -> None:
+            self._inner = inner
+
+        def daily(self, **kwargs: str) -> pd.DataFrame:
+            df = self._inner.daily(**kwargs)
+            return pd.concat([df, df.iloc[[0]]], ignore_index=True) if not df.empty else df
+
+        def adj_factor(self, **kwargs: str) -> pd.DataFrame:
+            return self._inner.adj_factor(**kwargs)
+
+        def daily_basic(self, **kwargs: str) -> pd.DataFrame:
+            return self._inner.daily_basic(**kwargs)
+
+    transport = _DuplicateKlineRowTransport(ReplayTushareTransport())
+    engine = _engine(["600000.SH"], start=date(2024, 1, 2))
+
+    summary = engine.sync(
+        market=_MARKET, as_of_date=date(2024, 1, 2), transport=transport, repo=repo
+    )
+
+    assert len(summary.failed) == 1
+    assert "重复" in (summary.failed[0].error or "")
+    assert repo.get_kline("600000", _MARKET).empty  # 拒绝落库，未写入任何脏数据
+    assert repo.get_valuation("600000", _MARKET).empty
+
+
+def test_fill_turnover_amt_with_empty_kline_df_leaves_turnover_amt_nan() -> None:
+    """`_assert_no_duplicate_keys` 的空表早退分支：`kline_df` 为空（如该区间行情
+    拉取无结果）而 `valuation_df` 非空时，不应因为空表而误判"重复"或崩溃——
+    左连接找不到匹配，`turnover_amt` 落为 NaN。"""
+    valuation_df = pd.DataFrame(
+        [
+            {
+                "code": "600000",
+                "market": "CN",
+                "date": "2024-01-02",
+                "pe_ttm": 15.0,
+                "pb": 1.0,
+                "market_cap": 1.0e9,
+                "turnover_amt": float("nan"),
+            }
+        ]
+    )
+    kline_df = pd.DataFrame(columns=["code", "market", "date", "amount"])
+
+    merged = _fill_turnover_amt(valuation_df, kline_df)
+
+    assert len(merged) == 1
+    assert merged.iloc[0]["turnover_amt"] != merged.iloc[0]["turnover_amt"]  # NaN
+
+
+# ---- 顺手补测：as_of 超前数据源可得日的设计内行为（非 bug，固化语义） -------------------
+
+
+def test_as_of_beyond_source_availability_retries_missing_tail_every_sync(
+    repo: Repository,
+) -> None:
+    """文档化设计内行为：某交易日在日历中存在，但数据源对该票完全没有数据
+    （如停牌/新股延迟披露）时，`_resolve_missing_start` 永远看不到任何已写入
+    的历史（`get_latest_kline_date`/`get_latest_valuation_date` 恒为 `None`），
+    于是每次 sync 都会重新请求同一段"尾部缺口"区间——这是当前实现的已知设计内
+    行为（非本次修复范围的 bug），留给后续任务接入 §3.3 的 `sync_failures`
+    持久化/退避策略后再收敛。"""
+    inner = ReplayTushareTransport()
+    transport = _RecordingTransport(inner)
+    engine = _engine(["999999.SH"], start=date(2024, 1, 2))
+
+    summary1 = engine.sync(
+        market=_MARKET, as_of_date=date(2024, 1, 4), transport=transport, repo=repo
+    )
+    first_start_dates = {kwargs["start_date"] for _name, kwargs in transport.calls}
+
+    transport.calls.clear()
+    summary2 = engine.sync(
+        market=_MARKET, as_of_date=date(2024, 1, 4), transport=transport, repo=repo
+    )
+    second_start_dates = {kwargs["start_date"] for _name, kwargs in transport.calls}
+
+    assert summary1.failed == ()
+    assert summary2.failed == ()
+    assert first_start_dates == second_start_dates == {"20240102"}  # 同一段尾部缺口被重复请求

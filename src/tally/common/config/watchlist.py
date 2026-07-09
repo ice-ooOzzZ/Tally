@@ -11,6 +11,7 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from datetime import date
 from pathlib import Path
 
@@ -30,9 +31,7 @@ class WatchlistConfig(StrictModel):
     @field_validator("codes")
     @classmethod
     def _no_duplicate_codes(cls, value: tuple[str, ...]) -> tuple[str, ...]:
-        counts: dict[str, int] = {}
-        for code in value:
-            counts[code] = counts.get(code, 0) + 1
+        counts = Counter(value)
         duplicates = sorted(code for code, count in counts.items() if count > 1)
         if duplicates:
             raise ValueError(f"codes 存在重复：{duplicates}")

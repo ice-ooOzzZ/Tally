@@ -242,6 +242,49 @@ def test_get_valuation_no_match_returns_empty_dataframe_with_correct_columns(
         ]
 
 
+# ---- 最新日期（M1 T1.3 HIGH 修复：自愈式续传起点） --------------------------------------
+
+
+def test_get_latest_kline_date_returns_none_when_no_rows(db_path: Path) -> None:
+    with Repository(db_path) as repo:
+        assert repo.get_latest_kline_date("600000", "CN") is None
+
+
+def test_get_latest_kline_date_returns_max_date(db_path: Path) -> None:
+    with Repository(db_path) as repo:
+        rows = [_kline_row(date=f"2024-01-{d:02d}") for d in (2, 4, 3)]  # 乱序写入
+        repo.upsert_kline(rows)
+        assert repo.get_latest_kline_date("600000", "CN") == "2024-01-04"
+
+
+def test_get_latest_kline_date_is_isolated_by_market(db_path: Path) -> None:
+    with Repository(db_path) as repo:
+        repo.upsert_kline([_kline_row(code="0700", market="CN", date="2024-01-02")])
+        assert repo.get_latest_kline_date("0700", "US") is None
+
+
+def test_get_latest_valuation_date_returns_none_when_no_rows(db_path: Path) -> None:
+    with Repository(db_path) as repo:
+        assert repo.get_latest_valuation_date("600000", "CN") is None
+
+
+def test_get_latest_valuation_date_returns_max_date(db_path: Path) -> None:
+    with Repository(db_path) as repo:
+        rows = [_valuation_row(date=f"2024-01-{d:02d}") for d in (2, 4, 3)]
+        repo.upsert_valuation(rows)
+        assert repo.get_latest_valuation_date("600000", "CN") == "2024-01-04"
+
+
+def test_get_latest_kline_and_valuation_dates_can_diverge(db_path: Path) -> None:
+    """回归场景：kline 已同步到较新日期、valuation 落后（如上一次 valuation 提交
+    失败）——两个方法各自反映所属表的真实状态，互不影响。"""
+    with Repository(db_path) as repo:
+        repo.upsert_kline([_kline_row(date=d) for d in ("2024-01-02", "2024-01-03", "2024-01-04")])
+        repo.upsert_valuation([_valuation_row(date="2024-01-02")])
+        assert repo.get_latest_kline_date("600000", "CN") == "2024-01-04"
+        assert repo.get_latest_valuation_date("600000", "CN") == "2024-01-02"
+
+
 # ---- signals ---------------------------------------------------------------------
 
 
