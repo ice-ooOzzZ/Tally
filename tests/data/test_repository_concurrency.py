@@ -5,6 +5,10 @@
 1. 全程不出现任何异常（尤其是 `database is locked`）；
 2. 写入最终一致——共享 PK 集合下 upsert 不产生重复行、每次 `insert_signal`
    都成功落地且不丢失。
+
+补测（代码审查发现的覆盖缺口）：`upsert_valuation` 此前未在高并发下与
+kline/signals 一起验证过——三者共享同一条 WriteQueue，若只测 kline+signals，
+valuation 那一路的并发正确性完全没有回归保护，故让 valuation 也参与本压测。
 """
 
 from __future__ import annotations
@@ -54,6 +58,19 @@ def _writer_job(
                         "volume": 1.0,
                         "amount": 1.0,
                         "adj_factor": 1.0,
+                    }
+                ]
+            )
+            repo.upsert_valuation(
+                [
+                    {
+                        "code": _SHARED_CODE,
+                        "market": _SHARED_MARKET,
+                        "date": date,
+                        "pe_ttm": float(writer_idx * 100_000 + i),
+                        "pb": 1.0,
+                        "market_cap": 1.0,
+                        "turnover_amt": 1.0,
                     }
                 ]
             )
@@ -116,6 +133,10 @@ def test_concurrent_read_write_no_lock_errors_and_final_consistency(
         kline_df = repo.get_kline(_SHARED_CODE, _SHARED_MARKET)
         assert len(kline_df) == len(_SHARED_DATES)
         assert kline_df["date"].nunique() == len(_SHARED_DATES)
+
+        valuation_df = repo.get_valuation(_SHARED_CODE, _SHARED_MARKET)
+        assert len(valuation_df) == len(_SHARED_DATES)
+        assert valuation_df["date"].nunique() == len(_SHARED_DATES)
 
         # 每次 insert_signal 用独立 code，互不冲突：数量应精确等于写入次数。
         signals_df = repo.get_signals(_SHARED_MARKET, _SIGNAL_DATE)

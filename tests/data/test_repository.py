@@ -116,6 +116,48 @@ def test_get_kline_date_range_filters_inclusive(db_path: Path) -> None:
         assert list(df["date"]) == ["2024-01-02", "2024-01-03", "2024-01-04"]
 
 
+def test_get_kline_only_start_returns_everything_from_start_onward(db_path: Path) -> None:
+    """只给 `start`（不给 `end`）：应取到 start（含）之后的所有行，而非因为
+    `end` 缺省就意外把整段查询裁掉或报错——补测单边范围查询。"""
+    with Repository(db_path) as repo:
+        rows = [_kline_row(date=f"2024-01-{d:02d}") for d in range(1, 6)]
+        repo.upsert_kline(rows)
+
+        df = repo.get_kline("600000", "CN", start="2024-01-03")
+        assert list(df["date"]) == ["2024-01-03", "2024-01-04", "2024-01-05"]
+
+
+def test_get_kline_only_end_returns_everything_up_to_end(db_path: Path) -> None:
+    """只给 `end`（不给 `start`）：应取到 end（含）之前的所有行。"""
+    with Repository(db_path) as repo:
+        rows = [_kline_row(date=f"2024-01-{d:02d}") for d in range(1, 6)]
+        repo.upsert_kline(rows)
+
+        df = repo.get_kline("600000", "CN", end="2024-01-03")
+        assert list(df["date"]) == ["2024-01-01", "2024-01-02", "2024-01-03"]
+
+
+def test_get_kline_no_match_returns_empty_dataframe_with_correct_columns(db_path: Path) -> None:
+    """查无结果时也要返回列名正确的空 DataFrame（而非空列表/None），
+    调用方无需为"零行"和"有行"两种形态分别写不同的列访问逻辑。"""
+    with Repository(db_path) as repo:
+        df = repo.get_kline("NOSUCH", "CN")
+        assert df.empty
+        assert list(df.columns) == [
+            "code",
+            "market",
+            "date",
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume",
+            "amount",
+            "adj_factor",
+            "source",
+        ]
+
+
 # ---- valuation -------------------------------------------------------------------
 
 
@@ -153,6 +195,53 @@ def test_upsert_valuation_missing_required_field_raises(db_path: Path) -> None:
             repo.upsert_valuation([bad_row])
 
 
+def test_get_valuation_date_range_filters_inclusive(db_path: Path) -> None:
+    with Repository(db_path) as repo:
+        rows = [_valuation_row(date=f"2024-01-{d:02d}") for d in range(1, 6)]
+        repo.upsert_valuation(rows)
+
+        df = repo.get_valuation("600000", "CN", start="2024-01-02", end="2024-01-04")
+        assert list(df["date"]) == ["2024-01-02", "2024-01-03", "2024-01-04"]
+
+
+def test_get_valuation_only_start_returns_everything_from_start_onward(db_path: Path) -> None:
+    """补测单边范围查询（只给 start）：与 `get_kline` 的同类回归对称。"""
+    with Repository(db_path) as repo:
+        rows = [_valuation_row(date=f"2024-01-{d:02d}") for d in range(1, 6)]
+        repo.upsert_valuation(rows)
+
+        df = repo.get_valuation("600000", "CN", start="2024-01-03")
+        assert list(df["date"]) == ["2024-01-03", "2024-01-04", "2024-01-05"]
+
+
+def test_get_valuation_only_end_returns_everything_up_to_end(db_path: Path) -> None:
+    """补测单边范围查询（只给 end）：与 `get_kline` 的同类回归对称。"""
+    with Repository(db_path) as repo:
+        rows = [_valuation_row(date=f"2024-01-{d:02d}") for d in range(1, 6)]
+        repo.upsert_valuation(rows)
+
+        df = repo.get_valuation("600000", "CN", end="2024-01-03")
+        assert list(df["date"]) == ["2024-01-01", "2024-01-02", "2024-01-03"]
+
+
+def test_get_valuation_no_match_returns_empty_dataframe_with_correct_columns(
+    db_path: Path,
+) -> None:
+    """查无结果时返回空 DataFrame 且列名正确（补测缺口）。"""
+    with Repository(db_path) as repo:
+        df = repo.get_valuation("NOSUCH", "CN")
+        assert df.empty
+        assert list(df.columns) == [
+            "code",
+            "market",
+            "date",
+            "pe_ttm",
+            "pb",
+            "market_cap",
+            "turnover_amt",
+        ]
+
+
 # ---- signals ---------------------------------------------------------------------
 
 
@@ -183,6 +272,26 @@ def test_get_signals_filters_by_market_and_date(db_path: Path) -> None:
         assert len(df) == 1
         assert df.iloc[0]["code"] == "600000"
         assert df.iloc[0]["advice"] == "buy"
+
+
+def test_get_signals_no_match_returns_empty_dataframe_with_correct_columns(db_path: Path) -> None:
+    """查无结果时返回空 DataFrame 且列名正确（补测缺口）。"""
+    with Repository(db_path) as repo:
+        df = repo.get_signals("CN", "2099-01-01")
+        assert df.empty
+        assert list(df.columns) == [
+            "id",
+            "strategy_id",
+            "date",
+            "code",
+            "market",
+            "advice",
+            "score",
+            "reasons_json",
+            "price_at_signal",
+            "stop_loss",
+            "position_pct",
+        ]
 
 
 def test_signal_optional_fields_roundtrip(db_path: Path) -> None:

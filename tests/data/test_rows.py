@@ -98,3 +98,44 @@ def test_valuation_dataframe_row_missing_required_field_raises() -> None:
     df.loc[0, "code"] = float("nan")
     with pytest.raises(ValueError, match="缺少必填字段"):
         normalize_valuation_rows(df)
+
+
+# ---- valuation 侧非必填字段 NaN→None 归一化（与 kline 侧对称，补测） -----------------------
+
+
+def test_valuation_nan_for_optional_column_normalizes_to_none_not_nan() -> None:
+    """valuation 没有类似 kline `source` 的默认值列，其非必填字段（如 `pe_ttm`）在
+    DataFrame 输入下缺失时是 NaN；必须归一化为 `None` 才能安全绑定进 SQL 参数，
+    否则 NaN 字面量会原样写进 DB（对称于 `_KLINE_COLUMNS` 里 `close` 的同类用例）。"""
+    df = pd.DataFrame(
+        [
+            {
+                "code": "600000",
+                "market": "CN",
+                "date": "2024-01-02",
+                "pe_ttm": float("nan"),
+                "pb": float("nan"),
+                "market_cap": float("nan"),
+                "turnover_amt": float("nan"),
+            }
+        ]
+    )
+    rows = normalize_valuation_rows(df)
+    assert rows[0]["pe_ttm"] is None
+    assert rows[0]["pb"] is None
+    assert rows[0]["market_cap"] is None
+    assert rows[0]["turnover_amt"] is None
+
+
+def test_valuation_explicit_none_for_optional_column_stays_none() -> None:
+    rows = normalize_valuation_rows(
+        [
+            {
+                "code": "600000",
+                "market": "CN",
+                "date": "2024-01-02",
+                "pe_ttm": None,
+            }
+        ]
+    )
+    assert rows[0]["pe_ttm"] is None
