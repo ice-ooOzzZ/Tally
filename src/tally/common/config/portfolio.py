@@ -8,17 +8,31 @@ from __future__ import annotations
 from pathlib import Path
 
 import yaml
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from tally.common.config.base import CONFIG_DIR, StrictModel
 
+# 浮点误差容忍（yaml 里的配额多为两位小数，累加误差远小于此值）。
+_QUOTA_SUM_TOLERANCE = 1e-6
+
 
 class QuotasConfig(StrictModel):
-    """三条策略的目标配额（现金底仓 = 1 - s1 - s2 - s4，不单独建模，由校验保证≥0）。"""
+    """三条策略的目标配额（现金底仓 = 1 - s1 - s2 - s4，不单独建模，由下方校验保证≥0）。"""
 
     s1: float = Field(ge=0, le=1)
     s2: float = Field(ge=0, le=1)
     s4: float = Field(ge=0, le=1)
+
+    @model_validator(mode="after")
+    def _check_total_leaves_nonnegative_cash(self) -> QuotasConfig:
+        total = self.s1 + self.s2 + self.s4
+        if total > 1 + _QUOTA_SUM_TOLERANCE:
+            raise ValueError(
+                f"quotas 之和 {total:.6f} 超过 1（隐含现金底仓为负）："
+                f"s1={self.s1}, s2={self.s2}, s4={self.s4}；"
+                "见 spec §4.1 停用重归一规则，配额改动须保证三者之和 <= 1"
+            )
+        return self
 
 
 class DriftBandConfig(StrictModel):

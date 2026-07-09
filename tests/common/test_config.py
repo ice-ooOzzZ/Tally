@@ -20,6 +20,19 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 CONFIG_DIR = REPO_ROOT / "config"
 
 
+@pytest.fixture(autouse=True)
+def _dummy_secrets(monkeypatch: pytest.MonkeyPatch) -> None:
+    """system.yaml 的三个 `env:VAR` 密钥字段现在要求 `min_length=1`（M2 整改）。
+
+    测试环境通常没有真实 `.env`；这里注入占位非空值，避免本模块里"测试系统配置
+    其他字段"的用例因为密钥解析成空字符串而报出与被测字段无关的错误。真正校验
+    "密钥缺失该怎么报错"的是下面 `test_system_config_empty_secret_rejected`。
+    """
+    monkeypatch.setenv("TUSHARE_TOKEN", "dummy-tushare-token")
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "dummy-telegram-bot-token")
+    monkeypatch.setenv("TELEGRAM_CHAT_ID", "dummy-telegram-chat-id")
+
+
 # ---- 真实 config/*.yaml 能正确加载 --------------------------------------------
 
 
@@ -209,3 +222,83 @@ def test_strategies_config_typo_in_market_override_rejected(tmp_path: Path) -> N
         load_strategies_config(path)
     locations = [".".join(str(p) for p in err["loc"]) for err in exc_info.value.errors()]
     assert any("daily_gain_exclude_TYPO" in loc for loc in locations)
+
+
+# ---- M2: 密钥字段 min_length=1，空字符串必须被拒绝 --------------------------------
+
+
+def test_system_config_empty_secret_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
+    """`TUSHARE_TOKEN` 解析成空字符串（例如设置了变量但值为空）时应 fail-fast。"""
+    monkeypatch.setenv("TUSHARE_TOKEN", "")
+    with pytest.raises(ValidationError) as exc_info:
+        load_system_config()
+    locations = [".".join(str(p) for p in err["loc"]) for err in exc_info.value.errors()]
+    assert "tushare_token" in locations
+
+
+def test_system_config_missing_env_var_resolves_to_empty_and_is_rejected(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """完全不设置环境变量时，`resolve_env_ref` 落回空字符串，同样应被拒绝
+    （而不是静默通过一份"看起来配置齐全但其实是空字符串"的密钥配置）。
+    """
+    monkeypatch.delenv("TUSHARE_TOKEN", raising=False)
+    with pytest.raises(ValidationError) as exc_info:
+        load_system_config()
+    locations = [".".join(str(p) for p in err["loc"]) for err in exc_info.value.errors()]
+    assert "tushare_token" in locations
+
+
+# ---- M3: portfolio.yaml 配额之和不得超过 1（隐含现金底仓不得为负） ------------------
+
+
+def test_portfolio_config_quotas_sum_over_one_rejected(tmp_path: Path) -> None:
+    raw = yaml.safe_load((CONFIG_DIR / "portfolio.yaml").read_text(encoding="utf-8"))
+    raw["CN"]["quotas"] = {"s1": 0.5, "s2": 0.4, "s4": 0.3}  # 合计 1.2 > 1
+    path = _write_yaml(tmp_path, raw)
+    with pytest.raises(ValidationError) as exc_info:
+        load_portfolio_config(path)
+    locations = [".".join(str(p) for p in err["loc"]) for err in exc_info.value.errors()]
+    assert any("quotas" in loc for loc in locations)
+
+
+def test_portfolio_config_quotas_sum_exactly_one_is_allowed(tmp_path: Path) -> None:
+    """边界值：三者之和恰好为 1（现金底仓为 0）应当放行，不能因浮点误差误拒。"""
+    raw = yaml.safe_load((CONFIG_DIR / "portfolio.yaml").read_text(encoding="utf-8"))
+    raw["CN"]["quotas"] = {"s1": 0.5, "s2": 0.3, "s4": 0.2}  # 合计恰好 1.0
+    path = _write_yaml(tmp_path, raw)
+    cfg = load_portfolio_config(path)
+    assert cfg.CN.quotas.s1 == pytest.approx(0.5)
+
+
+# ---- 补测试：portfolio.yaml / pool.yaml / backtest.yaml 各补一条非法配置定位测试 ----
+
+
+def test_portfolio_config_missing_field_reports_field_path(tmp_path: Path) -> None:
+    raw = yaml.safe_load((CONFIG_DIR / "portfolio.yaml").read_text(encoding="utf-8"))
+    del raw["ledger_guard"]["exec_rate_alert"]
+    path = _write_yaml(tmp_path, raw)
+    with pytest.raises(ValidationError) as exc_info:
+        load_portfolio_config(path)
+    locations = [".".join(str(p) for p in err["loc"]) for err in exc_info.value.errors()]
+    assert "ledger_guard.exec_rate_alert" in locations
+
+
+def test_pool_config_out_of_range_reports_field_path(tmp_path: Path) -> None:
+    raw = yaml.safe_load((CONFIG_DIR / "pool.yaml").read_text(encoding="utf-8"))
+    raw["US"]["entry"]["min_roe"] = "not-a-number"
+    path = _write_yaml(tmp_path, raw)
+    with pytest.raises(ValidationError) as exc_info:
+        load_pool_config(path)
+    locations = [".".join(str(p) for p in err["loc"]) for err in exc_info.value.errors()]
+    assert any("min_roe" in loc for loc in locations)
+
+
+def test_backtest_config_wrong_type_reports_field_path(tmp_path: Path) -> None:
+    raw = yaml.safe_load((CONFIG_DIR / "backtest.yaml").read_text(encoding="utf-8"))
+    raw["costs"]["CN"]["commission_min"] = "five-yuan"  # 应为数值
+    path = _write_yaml(tmp_path, raw)
+    with pytest.raises(ValidationError) as exc_info:
+        load_backtest_config(path)
+    locations = [".".join(str(p) for p in err["loc"]) for err in exc_info.value.errors()]
+    assert any("commission_min" in loc for loc in locations)

@@ -13,6 +13,11 @@ repos:
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.10.1
     hooks:
+      # 范围只到 src，故意不含 tests/：pre-commit 的 mypy hook 跑在隔离环境里，
+      # 把 tests/ 纳入意味着 additional_dependencies 还要补 pytest/numpy/pandas
+      # 等一整套测试期依赖，体积/维护成本明显上升。tests/ 的类型检查改为在
+      # CI/本地用 `uv run mypy src tests` 跑（复用 dev venv，已装全部依赖），
+      # 见 pyproject.toml 的 [tool.mypy] 配置本身覆盖两者。
       - id: mypy
         additional_dependencies:
           - pydantic>=2.7

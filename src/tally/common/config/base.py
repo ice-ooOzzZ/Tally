@@ -18,19 +18,21 @@ Market = Literal["CN", "US"]
 REPO_ROOT: Path = Path(__file__).resolve().parents[4]
 CONFIG_DIR: Path = REPO_ROOT / "config"
 
-_ENV_LOADED = False
+# 按已解析的绝对路径去重（而非一个全局布尔锁），这样传入自定义 dotenv_path
+# 不会被"第一次调用锁死"而被静默忽略——每个不同路径都会被独立加载一次。
+_loaded_dotenv_paths: set[Path] = set()
 
 
 def load_dotenv_if_present(dotenv_path: Path | None = None) -> None:
     """极简 `.env` 加载器：只在对应环境变量尚未设置时才写入 os.environ。
 
     不依赖 python-dotenv（未列入 IMPLEMENTATION_SPEC.md §0 技术栈），仅支持
-    `KEY=VALUE` 与 `# 注释` 两种行；重复调用是幂等的。
+    `KEY=VALUE` 与 `# 注释` 两种行。对同一个（已解析的）路径重复调用是幂等的；
+    对不同路径分别独立生效（主要用于测试注入自定义 `.env` fixture）。
     """
-    global _ENV_LOADED
-    if _ENV_LOADED:
+    path = (dotenv_path or (REPO_ROOT / ".env")).resolve()
+    if path in _loaded_dotenv_paths:
         return
-    path = dotenv_path or (REPO_ROOT / ".env")
     if path.is_file():
         for raw_line in path.read_text(encoding="utf-8").splitlines():
             line = raw_line.strip()
@@ -40,7 +42,7 @@ def load_dotenv_if_present(dotenv_path: Path | None = None) -> None:
             key = key.strip()
             value = value.strip().strip('"').strip("'")
             os.environ.setdefault(key, value)
-    _ENV_LOADED = True
+    _loaded_dotenv_paths.add(path)
 
 
 def resolve_env_ref(value: object) -> object:

@@ -67,15 +67,20 @@ def _shape_returns(shape: Shape, rng: np.random.Generator, n: int) -> np.ndarray
         trend = rng.normal(loc=0.006, scale=0.018, size=max(n - split - len(jump), 0))
         return np.concatenate([calm, jump, trend])[:n]
     if shape == "crash":
-        calm = rng.normal(loc=0.0005, scale=0.012, size=int(n * 0.75))
-        crash_len = max(int(n * 0.06), 3)
+        # 各段长度依次钳制在剩余可用天数内，避免 n_days 很小时 size 变负
+        # （np.random.Generator.normal 对负 size 会抛 ValueError: negative dimensions）。
+        calm_len = min(int(n * 0.75), n)
+        crash_len = min(max(int(n * 0.06), 3), max(n - calm_len, 0))
+        tail_len = max(n - calm_len - crash_len, 0)
+        calm = rng.normal(loc=0.0005, scale=0.012, size=calm_len)
         crash = rng.normal(loc=-0.05, scale=0.02, size=crash_len)
-        tail = rng.normal(loc=-0.001, scale=0.015, size=n - len(calm) - len(crash))
+        tail = rng.normal(loc=-0.001, scale=0.015, size=tail_len)
         return np.concatenate([calm, crash, tail])[:n]
     if shape == "recover":
-        crash_len = max(int(n * 0.06), 3)
+        crash_len = min(max(int(n * 0.06), 3), n)
+        rebound_len = max(n - crash_len, 0)
         crash = rng.normal(loc=-0.05, scale=0.02, size=crash_len)
-        rebound = rng.normal(loc=0.010, scale=0.018, size=n - crash_len)
+        rebound = rng.normal(loc=0.010, scale=0.018, size=rebound_len)
         return np.concatenate([crash, rebound])[:n]
     raise ValueError(f"未知形态 {shape!r}")
 

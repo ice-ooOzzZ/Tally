@@ -30,12 +30,21 @@ class RateLimitsConfig(StrictModel):
 
 
 class SystemConfig(StrictModel):
-    """system.yaml 顶层模型。"""
+    """system.yaml 顶层模型。
+
+    三个密钥字段要求 `min_length=1`：只保证"解析出的字符串非空"这一层校验
+    （对齐 `sec_user_agent` 的既有风格），不代表已校验密钥本身有效/可用。
+    "密钥完全缺失时给出更友好的报错"属于更丰富的启动期检查，留给 M1 实际
+    使用这些密钥的 data/sources 适配器落地（例如连接测试失败时的错误信息），
+    本层只负责 fail-fast：环境变量缺失 → `resolve_env_ref` 解析为空字符串 →
+    此处 `min_length=1` 立即拒绝，不允许"看起来配置齐全但其实是空字符串"
+    的配置静默通过。
+    """
 
     markets: dict[Market, MarketFinanceConfig]
-    tushare_token: str
-    telegram_bot_token: str
-    telegram_chat_id: str
+    tushare_token: str = Field(min_length=1)
+    telegram_bot_token: str = Field(min_length=1)
+    telegram_chat_id: str = Field(min_length=1)
     sec_user_agent: str = Field(min_length=1)
     rate_limits: RateLimitsConfig
 

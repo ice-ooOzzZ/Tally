@@ -14,7 +14,15 @@ from typing import Any
 
 
 def deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
-    """返回 base 与 override 深合并后的新 dict；不改动 base/override 本身。"""
+    """返回 base 与 override 深合并后的新 dict；不改动 base/override 本身。
+
+    浅拷贝契约：只有沿着"两侧都是 dict"的路径才会递归产生新的嵌套 dict；
+    其余值（包括 list/tuple 等非 dict 容器）在覆盖或保留时都是**按引用**带入
+    结果的，不做深拷贝。对本项目的用法（yaml 解析出的即用即弃的临时结构，
+    合并后立即喂给 `model_validate` 产出 frozen 模型）这一点无副作用，但
+    调用方若打算在合并后继续原地修改 base/override 内部的可变容器，需自行
+    深拷贝。
+    """
     result: dict[str, Any] = dict(base)
     for key, value in override.items():
         if value is None:

@@ -91,3 +91,29 @@ def test_market_dispatch_differs_between_cn_and_us() -> None:
 def test_invalid_market_raises() -> None:
     with pytest.raises(ValueError):
         is_trading_day(date(2024, 1, 2), "JP")  # type: ignore[arg-type]
+
+
+# ---- 超出日历预加载窗口(2015-2035)的越界错误路径 ---------------------------------
+#
+# 越界日期取 pandas.Timestamp 可表示范围内、但明显在 2015-2035 窗口之外的值
+# （pandas Timestamp 底层是 int64 纳秒计数，可表示范围约 1677-2262 年；
+# date(1,1,1)/date(9999,12,31) 会在到达我们的越界检查之前就先在
+# `pd.Timestamp(day)` 这一步触发 OutOfBoundsDatetime，测不到我们想测的路径）。
+
+
+def test_next_trading_day_beyond_preloaded_window_raises() -> None:
+    far_future = date(2100, 1, 1)
+    with pytest.raises(ValueError, match="之后无已加载交易日"):
+        next_trading_day(far_future, "CN")
+
+
+def test_prev_trading_day_before_preloaded_window_raises() -> None:
+    far_past = date(1900, 1, 1)
+    with pytest.raises(ValueError, match="之前无已加载交易日"):
+        prev_trading_day(far_past, "CN")
+
+
+def test_next_trading_day_beyond_preloaded_window_raises_for_us_too() -> None:
+    far_future = date(2100, 1, 1)
+    with pytest.raises(ValueError, match="之后无已加载交易日"):
+        next_trading_day(far_future, "US")

@@ -10,11 +10,15 @@ authors = [{ name = "Qingzhu Liu" }]
 # 运行时依赖：核心 + 美股行情/日历相关（yfinance 精确 pin，见 IMPLEMENTATION_SPEC.md §0）
 dependencies = [
     "pandas>=2.2,<3",
-    "numpy>=1.26,<3",
+    # 上限 <2.5：numpy 2.5.0 起 bundled stub 用了 PEP 695 `type` 语句(3.12+ 语法，
+    # 且未加 sys.version_info 门控)，mypy 在 python_version=3.11 下解析该 stub 会
+    # 直接语法报错并中止整个检查——与本项目代码是否兼容 3.11 无关，是第三方 stub
+    # 兼容性问题（已实测 numpy 2.3.x/2.4.x 均无此问题，2.5.0 起出现）。
+    "numpy>=1.26,<2.5",
     "pydantic>=2.7,<3",
-    "pydantic-settings>=2.3,<3",
+    "pydantic-settings>=2.3,<3",  # M1 起：data/sources 适配器用其 BaseSettings 读取限流/凭证相关环境配置
     "typer>=0.12,<1",
-    "tenacity>=8.3,<9",
+    "tenacity>=8.3,<9",  # M1 起：data/sources 适配器的重试/退避装饰器（令牌桶之外的瞬时故障重试）
     "requests>=2.32,<3",
     "PyYAML>=6.0,<7",
     "pandas_market_calendars>=4.4,<5",
@@ -59,8 +63,10 @@ testpaths = ["tests"]
 addopts = "-ra"
 
 [tool.ruff]
+# 对齐 requires-python 的最低支持版本(3.11)，而非本地开发用的 3.12 venv，
+# 否则会放行 3.11 跑不了的语法(审查发现的版本不一致问题)。
 line-length = 100
-target-version = "py312"
+target-version = "py311"
 extend-exclude = ["prototype"]
 
 [tool.ruff.lint]
@@ -68,11 +74,11 @@ select = ["E", "F", "I", "UP", "B"]
 
 [tool.black]
 line-length = 100
-target-version = ["py312"]
+target-version = ["py311"]
 extend-exclude = "prototype/"
 
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.11"
 strict = false
 ignore_missing_imports = true
 exclude = ["prototype/"]

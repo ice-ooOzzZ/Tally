@@ -42,6 +42,29 @@ def test_generator_does_not_mutate_config() -> None:
     assert cfg.extreme_moves == moves  # 未被修改
 
 
+# ---- M4 回归：crash/recover 在极小 n_days 下不应 negative-dimensions 崩溃 ----------
+
+
+@pytest.mark.parametrize("shape", ALL_SHAPES)
+@pytest.mark.parametrize("n_days", [1, 2, 3, 5, 8])
+def test_all_shapes_handle_small_n_days_without_crashing(shape: Shape, n_days: int) -> None:
+    """回归 M0.5 审查发现的 bug：crash/recover 形态在 n_days 很小时，某一段的
+    size 会算成负数，触发 `ValueError: negative dimensions`（且并非期望中的
+    "越界报错"，而是 numpy 内部报错）。修复后应始终成功钳制到 [0, n_days]。
+    """
+    df = generate_synthetic_kline(SynthConfig(shape=shape, n_days=n_days, seed=1))
+    assert len(df) == n_days
+    assert (df["close"] > 0).all()
+
+
+def test_crash_and_recover_still_reproducible_at_tiny_n_days() -> None:
+    for shape in ("crash", "recover"):
+        cfg = SynthConfig(shape=shape, n_days=3, seed=9)
+        df1 = generate_synthetic_kline(cfg)
+        df2 = generate_synthetic_kline(cfg)
+        pd.testing.assert_frame_equal(df1, df2)
+
+
 def test_all_shapes_produce_expected_row_count_and_columns() -> None:
     for shape in ALL_SHAPES:
         df = generate_synthetic_kline(SynthConfig(shape=shape, n_days=64, seed=42))

@@ -12,7 +12,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 import yaml
 from pydantic import Field
@@ -123,10 +123,10 @@ ResolvedStrategies = dict[StrategyId, dict[Market, StrategyParams]]
 
 
 def _resolve_strategy(
-    strategy_id: StrategyId, raw_strategy: dict
+    strategy_id: StrategyId, raw_strategy: dict[str, Any]
 ) -> dict[Market, StrategyParams]:
     """对单条策略做 market_overrides 深合并装配，返回每个市场的 frozen 参数对象。"""
-    overrides: dict[str, dict] = raw_strategy.get("market_overrides", {}) or {}
+    overrides: dict[str, dict[str, Any]] = raw_strategy.get("market_overrides", {}) or {}
     base = {k: v for k, v in raw_strategy.items() if k != "market_overrides"}
     model = _MODEL_BY_STRATEGY[strategy_id]
 
