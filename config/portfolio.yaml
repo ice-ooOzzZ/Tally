@@ -1,0 +1,20 @@
+# 组合层配置（资金宪法，IMPLEMENTATION_SPEC.md §4/§10）。每市场一套, 结构相同。
+CN:
+  quotas: {s1: 0.40, s2: 0.30, s4: 0.20}      # 现金底仓 0.10；策略腿停用时按 §4.1 重归一后改写本文件
+  drift_band: {s1: 0.10, s2: 0.10, s4: 0.05}
+  per_stock_cap: {default: 0.08, s4: 0.05}
+  industry_cap_weight: 0.25                    # 申万一级
+  regime: {bull_exposure: 0.80, range_exposure: 0.60, bear_exposure: 0.25,
+           sma_n: 200, mom_n: 60, mom_bear: -0.05, mom_bull: 0.03,
+           vol_n: 20, vol_bull_max: 0.30, dd_bear: -0.20, confirm_days: 5}
+  dd_gate: {half: -0.10, freeze: -0.15, release: -0.08}
+US:
+  quotas: {s1: 0.40, s2: 0.30, s4: 0.20}
+  drift_band: {s1: 0.10, s2: 0.10, s4: 0.05}
+  per_stock_cap: {default: 0.08, s4: 0.05}
+  industry_cap_weight: 0.25                    # GICS Sector
+  regime: {bull_exposure: 0.80, range_exposure: 0.60, bear_exposure: 0.25,
+           sma_n: 200, mom_n: 60, mom_bear: -0.05, mom_bull: 0.03,
+           vol_n: 20, vol_bull_max: 0.25, dd_bear: -0.20, confirm_days: 5}
+  dd_gate: {half: -0.10, freeze: -0.15, release: -0.08}
+ledger_guard: {unconfirmed_days: 3, exec_rate_alert: 0.50, exec_rate_window: 10}

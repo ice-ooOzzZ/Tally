@@ -1,0 +1,19 @@
+# 系统级配置（IMPLEMENTATION_SPEC.md §10）。
+# 密钥走 .env（见 .env.example），此处以 env:VAR 语义引用，由 common/config 加载时解析。
+markets:
+  CN:
+    enabled: true
+    initial_capital: 500000        # CNY
+    benchmark: H00300              # 降级链: H00300 -> 510300_adj -> 000300+2.2%
+    cash_yield: 0.018
+  US:
+    enabled: false                 # 灰度:A股链路满足成功标准2(无人工干预连续跑>=4周)后再置 true
+    initial_capital: 50000         # USD
+    benchmark: ^SP500TR            # 降级链: ^SP500TR -> ^GSPC+1.8%
+    cash_yield: 0.040
+tushare_token: env:TUSHARE_TOKEN
+telegram_bot_token: env:TELEGRAM_BOT_TOKEN
+telegram_chat_id: env:TELEGRAM_CHAT_ID
+sec_user_agent: "Tally/1.0 (qingzhu.liu@cobo.com)"   # SEC EDGAR 合规要求
+rate_limits: {tushare_per_min: 400, akshare_concurrency: 2, akshare_interval_s: 0.5,
+              yfinance_concurrency: 2, sec_edgar_rps: 8}

@@ -8,3 +8,25 @@
 # OS / temp
 *.log
 *.tmp
+
+# Python / uv
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+htmlcov/
+.coverage
+
+# Secrets
+.env
+
+# Data (rebuildable from source, see spec §0)
+*.db
+*.sqlite
+*.sqlite3
+data/*.db

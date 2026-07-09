@@ -1,0 +1,78 @@
+[project]
+name = "tally"
+version = "0.1.0"
+description = "Tally(明账) — 规则化选股与建议追踪系统"
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+license = { text = "Proprietary" }
+authors = [{ name = "Qingzhu Liu" }]
+
+# 运行时依赖：核心 + 美股行情/日历相关（yfinance 精确 pin，见 IMPLEMENTATION_SPEC.md §0）
+dependencies = [
+    "pandas>=2.2,<3",
+    "numpy>=1.26,<3",
+    "pydantic>=2.7,<3",
+    "pydantic-settings>=2.3,<3",
+    "typer>=0.12,<1",
+    "tenacity>=8.3,<9",
+    "requests>=2.32,<3",
+    "PyYAML>=6.0,<7",
+    "pandas_market_calendars>=4.4,<5",
+    "yfinance==0.2.54",
+    "lxml>=5.2,<6",
+]
+
+[project.scripts]
+tally = "tally.cli:app"
+
+[project.optional-dependencies]
+dashboard = [
+    "streamlit>=1.35,<2",
+    "plotly>=5.22,<6",
+]
+dev = [
+    "pytest>=8.2,<9",
+    "pytest-cov>=5.0,<6",
+    "ruff>=0.5,<1",
+    "black>=24.4,<25",
+    "mypy>=1.10,<2",
+    "pandas-stubs>=2.2,<3",
+    "types-requests>=2.32,<3",
+    "types-PyYAML>=6.0,<7",
+    "pre-commit>=3.7,<4",
+]
+# A股数据源（M1 起接入，先在 pyproject 声明以便 uv sync 一次装齐）
+data = [
+    "tushare>=1.4,<2",
+    "akshare>=1.14,<2",
+]
+
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tally"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["prototype"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.black]
+line-length = 100
+target-version = ["py312"]
+extend-exclude = "prototype/"
+
+[tool.mypy]
+python_version = "3.12"
+strict = false
+ignore_missing_imports = true
+exclude = ["prototype/"]

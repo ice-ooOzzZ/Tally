@@ -1,0 +1,17 @@
+# 回测配置（IMPLEMENTATION_SPEC.md §7/§10）。
+train: {start: "2019-01-01", end: "2023-12-31"}
+oos: {start: "2024-01-01", view_budget: 3}
+costs:
+  CN:
+    commission: 0.0005
+    commission_min: 5              # CNY
+    stamp_duty: [{until: "2023-08-27", rate: 0.001}, {from: "2023-08-28", rate: 0.0005}]
+    slippage: {s1: 0.008, s2: 0.002, s4: 0.008}
+    dividend_tax_lt1m: 0.20
+  US:
+    commission_per_share: 0.005    # USD, IBKR 阶梯
+    commission_min: 1              # USD
+    slippage: {s1: 0.005, s2: 0.002, s4: 0.005}    # 主口径; 另跑 0.001 现实口径对照
+    slippage_realistic: 0.001
+    dividend_withholding: 0.10
+    capital_gains_tax: {enabled: true, rate: 0.20}
