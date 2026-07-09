@@ -55,3 +55,17 @@ def prev_trading_day(day: date, market: Market) -> date:
     if pos < 0:
         raise ValueError(f"{day} 之前无已加载交易日（market={market}），需扩大日历预加载范围")
     return days[pos].date()
+
+
+def trading_days_in_range(start: date, end: date, market: Market) -> list[date]:
+    """`market` 在 `[start, end]` 闭区间内的交易日列表（升序）。
+
+    `start > end`（如 T1.3 同步管道判定"该票已无缺失区间"时）直接返回空列表，
+    而非报错——调用方（`data/sync.py`）据此判断该票本次无需拉取，是正常路径
+    而非异常路径。
+    """
+    if start > end:
+        return []
+    days = _trading_days(market)
+    mask = (days >= pd.Timestamp(start)) & (days <= pd.Timestamp(end))
+    return [ts.date() for ts in days[mask]]
