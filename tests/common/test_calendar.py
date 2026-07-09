@@ -4,7 +4,12 @@ from datetime import date
 
 import pytest
 
-from tally.common.calendar import is_trading_day, next_trading_day, prev_trading_day
+from tally.common.calendar import (
+    is_trading_day,
+    next_trading_day,
+    prev_trading_day,
+    trading_days_in_range,
+)
 
 # ---- CN (SSE) ------------------------------------------------------------------
 
@@ -117,3 +122,34 @@ def test_next_trading_day_beyond_preloaded_window_raises_for_us_too() -> None:
     far_future = date(2100, 1, 1)
     with pytest.raises(ValueError, match="之后无已加载交易日"):
         next_trading_day(far_future, "US")
+
+
+# ---- trading_days_in_range（M1 审查整改：补直接单测） -----------------------------------
+
+
+def test_trading_days_in_range_start_after_end_returns_empty_list() -> None:
+    """`start > end`（如 sync 管道判定"该票已无缺失区间"时）返回空列表，非报错。"""
+    assert trading_days_in_range(date(2024, 1, 5), date(2024, 1, 2), "CN") == []
+
+
+def test_trading_days_in_range_inclusive_closed_interval() -> None:
+    days = trading_days_in_range(date(2024, 1, 2), date(2024, 1, 4), "CN")
+    assert days == [date(2024, 1, 2), date(2024, 1, 3), date(2024, 1, 4)]
+
+
+def test_trading_days_in_range_start_equals_end_on_trading_day_returns_single_day() -> None:
+    assert trading_days_in_range(date(2024, 1, 2), date(2024, 1, 2), "CN") == [date(2024, 1, 2)]
+
+
+def test_trading_days_in_range_entirely_within_holiday_returns_empty_list() -> None:
+    """区间完全落在假期内（2024 春节休市 02-12~02-18）：无交易日，返回空列表。"""
+    assert trading_days_in_range(date(2024, 2, 13), date(2024, 2, 16), "CN") == []
+
+
+def test_trading_days_in_range_non_trading_day_boundaries_clip_to_inner_days() -> None:
+    """start/end 本身是非交易日（周末）：区间应正确圈住区间内部的交易日边界，
+    而非因为端点不是交易日就报错或漏算。"""
+    # 2024-01-06(周六)~2024-01-08(周一)：区间内仅 01-08 是交易日。
+    assert trading_days_in_range(date(2024, 1, 6), date(2024, 1, 8), "CN") == [date(2024, 1, 8)]
+    # 2024-01-05(周五)~2024-01-07(周日)：区间内仅 01-05 是交易日。
+    assert trading_days_in_range(date(2024, 1, 5), date(2024, 1, 7), "CN") == [date(2024, 1, 5)]

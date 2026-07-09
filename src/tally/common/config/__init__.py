@@ -10,6 +10,7 @@ from tally.common.config.pool import PoolConfig, load_pool_config
 from tally.common.config.portfolio import PortfolioConfig, load_portfolio_config
 from tally.common.config.strategies import ResolvedStrategies, load_strategies_config
 from tally.common.config.system import SystemConfig, load_system_config
+from tally.common.config.watchlist import WatchlistConfig, load_watchlist_config
 
 __all__ = [
     "CONFIG_DIR",
@@ -27,4 +28,6 @@ __all__ = [
     "load_backtest_config",
     "ResolvedStrategies",
     "load_strategies_config",
+    "WatchlistConfig",
+    "load_watchlist_config",
 ]

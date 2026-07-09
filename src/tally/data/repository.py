@@ -260,6 +260,37 @@ class Repository:
         )
         return self._read_df(sql, params)
 
+    _LATEST_KLINE_DATE_SQL = (
+        "SELECT date FROM kline WHERE code = ? AND market = ? ORDER BY date DESC LIMIT 1"
+    )
+
+    _LATEST_VALUATION_DATE_SQL = (
+        "SELECT date FROM valuation WHERE code = ? AND market = ? ORDER BY date DESC LIMIT 1"
+    )
+
+    def get_latest_kline_date(self, code: str, market: str) -> str | None:
+        """该 code+market 在 kline 表内的最新日期（无数据返回 `None`）。
+
+        供增量同步续传起点使用（见 `tally.data.sync._resolve_missing_start`）：
+        `ORDER BY date DESC LIMIT 1` 只取一行，避免像 `get_kline(code, market)`
+        那样拉回整张表历史只为取一个 `max(date)`。
+        """
+        conn = self._connect_reader()
+        try:
+            row = conn.execute(self._LATEST_KLINE_DATE_SQL, [code, market]).fetchone()
+            return None if row is None else str(row["date"])
+        finally:
+            conn.close()
+
+    def get_latest_valuation_date(self, code: str, market: str) -> str | None:
+        """同 `get_latest_kline_date`，对应 valuation 表。"""
+        conn = self._connect_reader()
+        try:
+            row = conn.execute(self._LATEST_VALUATION_DATE_SQL, [code, market]).fetchone()
+            return None if row is None else str(row["date"])
+        finally:
+            conn.close()
+
     def get_signals(self, market: str, date: str) -> pd.DataFrame:
         """按 market+date 精确匹配取 signals，按 id 升序。"""
         sql = (
