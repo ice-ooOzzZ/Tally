@@ -1,0 +1,35 @@
+# 策略参数配置（IMPLEMENTATION_SPEC.md §5.2/§10）。
+# S1 为完整范式；美股差异一律走 market_overrides.US（深合并, null=删除条款）。
+s1_breakout:
+  enabled: true
+  entry:
+    high_lookback: 250
+    vol_mult: 1.5
+    vol_lookback: 20
+    ma_gate: 50
+    bubble_brake_ratio: 0.40
+    limit_up_exclude_ratio: 0.99
+  exit:
+    chandelier_atr_n: 20
+    chandelier_atr_mult: 3.0
+    ma_break_n: 50
+    ma_break_days: 3
+    hard_stop: -0.08
+  ranking: {mom_skip: 21, mom_lookback: 252}
+  market_overrides:
+    US: {entry: {limit_up_exclude_ratio: null, daily_gain_exclude: 0.10}}
+s2_pead:
+  enabled: true
+  entry: {r_jump_min: 0.03, r_vol_mult: 2.0, confirm_window: 5,
+          roe_ttm_min: 0.08, ma_gate: 200}
+  exit: {time_days: 45, hard_stop: -0.12, pre_report_min_profit: 0.05}
+  market_overrides:
+    US: {entry: {r_mode: price_inferred_2d}}    # 事件日推断与生效规则走 MarketProfile
+s4_panic_reversion:
+  enabled: true
+  entry: {rsi_n: 3, rsi_oversold: 15, drop_5d: -0.06, ma_trend: 200,
+          ma_trend_rising_n: 20, ma_short: 5, vol_spike_max: 3.0,
+          event_avoid_days: 5, event_avoid_days_fallback: 10}
+  exit: {rsi_exit: 60, time_days: 7, time_days_bear: 3, hard_stop: -0.07}
+  market_overrides:
+    US: {entry: {crash_day_drop: -0.10}}        # 等效崩溃日阈值, 军令状网格 {-0.10,-0.12,-0.15}

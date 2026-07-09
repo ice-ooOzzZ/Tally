@@ -1,0 +1,14 @@
+# 股票池配置（IMPLEMENTATION_SPEC.md §6/§10）。
+CN:
+  entry: {min_mcap: 1.0e10, pe_ttm_range: [0, 40], pb_range: [0, 8],
+          min_amount_20d: 1.0e8, min_list_days: 250, exclude_st: true}
+  size: 50
+  industry_cap_count: 0.20
+  exit_grace_weeks: 2
+US:
+  universe: sp500
+  entry: {min_mcap_usd: 1.0e10, pe_range: [0, 40], min_roe: 0.12, min_avg_volume: 1.0e6,
+          roe_skip_if_missing: true}
+  size: 30
+  industry_cap_count: 0.20
+  exit_grace_weeks: 2
