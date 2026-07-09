@@ -1,0 +1,32 @@
+[
+  {
+    "ts_code": "600000.SH",
+    "trade_date": "20240102",
+    "adj_factor": 1.2000
+  },
+  {
+    "ts_code": "600000.SH",
+    "trade_date": "20240103",
+    "adj_factor": 1.2000
+  },
+  {
+    "ts_code": "600000.SH",
+    "trade_date": "20240104",
+    "adj_factor": 1.2500
+  },
+  {
+    "ts_code": "000001.SZ",
+    "trade_date": "20240102",
+    "adj_factor": 1.0500
+  },
+  {
+    "ts_code": "000001.SZ",
+    "trade_date": "20240103",
+    "adj_factor": 1.0500
+  },
+  {
+    "ts_code": "000001.SZ",
+    "trade_date": "20240104",
+    "adj_factor": 1.0500
+  }
+]

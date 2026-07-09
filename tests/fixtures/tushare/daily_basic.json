@@ -1,0 +1,68 @@
+[
+  {
+    "ts_code": "600000.SH",
+    "trade_date": "20240102",
+    "close": 9.90,
+    "turnover_rate": 0.35,
+    "pe": 5.32,
+    "pe_ttm": 5.10,
+    "pb": 0.55,
+    "total_mv": 2100000.0,
+    "circ_mv": 2000000.0
+  },
+  {
+    "ts_code": "600000.SH",
+    "trade_date": "20240103",
+    "close": 10.50,
+    "turnover_rate": 0.48,
+    "pe": 5.64,
+    "pe_ttm": 5.41,
+    "pb": 0.58,
+    "total_mv": 2226000.0,
+    "circ_mv": 2120000.0
+  },
+  {
+    "ts_code": "600000.SH",
+    "trade_date": "20240104",
+    "close": 10.20,
+    "turnover_rate": 0.41,
+    "pe": 5.48,
+    "pe_ttm": 5.25,
+    "pb": 0.56,
+    "total_mv": 2162000.0,
+    "circ_mv": 2058000.0
+  },
+  {
+    "ts_code": "000001.SZ",
+    "trade_date": "20240102",
+    "close": 10.10,
+    "turnover_rate": 0.62,
+    "pe": 6.05,
+    "pe_ttm": 5.98,
+    "pb": 0.72,
+    "total_mv": 1958000.0,
+    "circ_mv": 1958000.0
+  },
+  {
+    "ts_code": "000001.SZ",
+    "trade_date": "20240103",
+    "close": 10.30,
+    "turnover_rate": 0.58,
+    "pe": 6.17,
+    "pe_ttm": 6.10,
+    "pb": 0.73,
+    "total_mv": 1996000.0,
+    "circ_mv": 1996000.0
+  },
+  {
+    "ts_code": "000001.SZ",
+    "trade_date": "20240104",
+    "close": 10.22,
+    "turnover_rate": 0.50,
+    "pe": 6.12,
+    "pe_ttm": 6.05,
+    "pb": 0.72,
+    "total_mv": 1981000.0,
+    "circ_mv": 1981000.0
+  }
+]
