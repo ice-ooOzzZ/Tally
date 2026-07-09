@@ -1,0 +1,80 @@
+[
+  {
+    "ts_code": "600000.SH",
+    "trade_date": "20240102",
+    "open": 9.80,
+    "high": 9.95,
+    "low": 9.75,
+    "close": 9.90,
+    "pre_close": 9.78,
+    "change": 0.12,
+    "pct_chg": 1.2270,
+    "vol": 350000.0,
+    "amount": 346500.12
+  },
+  {
+    "ts_code": "600000.SH",
+    "trade_date": "20240103",
+    "open": 9.92,
+    "high": 10.55,
+    "low": 9.90,
+    "close": 10.50,
+    "pre_close": 9.90,
+    "change": 0.60,
+    "pct_chg": 6.0606,
+    "vol": 500000.0,
+    "amount": 510000.00
+  },
+  {
+    "ts_code": "600000.SH",
+    "trade_date": "20240104",
+    "open": 10.05,
+    "high": 10.30,
+    "low": 9.95,
+    "close": 10.20,
+    "pre_close": 10.50,
+    "change": -0.30,
+    "pct_chg": -2.8571,
+    "vol": 420000.0,
+    "amount": 428000.00
+  },
+  {
+    "ts_code": "000001.SZ",
+    "trade_date": "20240102",
+    "open": 10.00,
+    "high": 10.20,
+    "low": 9.95,
+    "close": 10.10,
+    "pre_close": 9.98,
+    "change": 0.12,
+    "pct_chg": 1.2024,
+    "vol": 800000.0,
+    "amount": 806000.00
+  },
+  {
+    "ts_code": "000001.SZ",
+    "trade_date": "20240103",
+    "open": 10.10,
+    "high": 10.35,
+    "low": 10.05,
+    "close": 10.30,
+    "pre_close": 10.10,
+    "change": 0.20,
+    "pct_chg": 1.9802,
+    "vol": 750000.0,
+    "amount": 767000.00
+  },
+  {
+    "ts_code": "000001.SZ",
+    "trade_date": "20240104",
+    "open": 10.28,
+    "high": 10.40,
+    "low": 10.15,
+    "close": 10.22,
+    "pre_close": 10.30,
+    "change": -0.08,
+    "pct_chg": -0.7767,
+    "vol": 690000.0,
+    "amount": 703000.00
+  }
+]
